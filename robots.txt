@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://dogarshaib267.github.io/dogar-books/sitemap.xml
