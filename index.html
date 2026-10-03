@@ -148,6 +148,21 @@
   /* ---------- footer ---------- */
   footer{background:#0b1f33; color:#9fb4c8; text-align:center; padding:1.6rem 1rem; font-size:.95rem;}
   footer b{color:#dce8f3;}
+  footer a{color:#9fb4c8; text-decoration:none;}
+  footer a:hover{color:#fff;}
+  /* ---------- promo (Khawar Graphics) ---------- */
+  .promo{background:linear-gradient(135deg,#7a5c00 0%,#b8860b 55%,#d4a017 100%); color:#fff; border-radius:16px;
+    padding:1.8rem 1.6rem; margin:2.2rem 0 0; box-shadow:0 6px 20px rgba(184,134,11,.35);
+    display:flex; flex-wrap:wrap; align-items:center; gap:1.2rem; justify-content:space-between;}
+  .promo .txt{flex:1 1 16rem;}
+  .promo h3{font-size:1.4rem; margin-bottom:.2rem;}
+  .promo p{opacity:.95; font-size:1rem;}
+  .promo .cta{background:#fff; color:#7a5c00; font-weight:700; text-decoration:none;
+    padding:.45rem 1.8rem; border-radius:30px; font-size:1.05rem; white-space:nowrap;}
+  .promo .cta:hover{background:#0e2c4a; color:#fff;}
+  /* ---------- ad slots (paste AdSense code inside when approved) ---------- */
+  .adslot{display:flex; justify-content:center; margin:1.4rem auto; max-width:64rem; padding:0 1rem;}
+  .adslot:empty{display:none;}
 </style>
 </head>
 <body>
@@ -169,7 +184,7 @@
   <h1>Dogar Books</h1>
   <p>علامہ اقبال اوپن یونیورسٹی بی ایڈ کی مکمل اردو ترجمہ شدہ درسی کتب — طلبہ اور اساتذہ کے لیے بالکل مفت ڈاؤن لوڈ کریں</p>
   <div class="stats">
-    <div><b>26</b><span>اردو کتب</span></div>
+    <div><b>30</b><span>اردو کتب</span></div>
     <div><b>مفت</b><span>ڈاؤن لوڈ</span></div>
     <div><b>9</b><span>یونٹس فی کتاب</span></div>
   </div>
@@ -181,6 +196,9 @@
     <input id="q" type="text" placeholder="کتاب تلاش کریں… (مثلاً: نصاب، 8603، philosophy)">
   </div>
 </div>
+
+<!-- ADSENSE SLOT: home-top — AdSense منظور ہونے پر اشتہاری کوڈ یہاں پیسٹ کریں -->
+<div class="adslot" id="ad-home-top"></div>
 
 <div class="wrap" id="books">
   <div class="sec-title">
@@ -344,6 +362,38 @@
       <a class="btn free" href="8626-Teacher-Education-Pakistan-Urdu.pdf" download>مفت ڈاؤن لوڈ</a>
     </div>
 
+    <div class="book" data-cat="spec" data-keys="8627 سائنسی تعلیم کی بنیاد foundation science education">
+      <span class="code">کورس 8627</span><span class="cat">اسپیشلائزیشن</span>
+      <h3>سائنسی تعلیم کی بنیاد</h3>
+      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 164 صفحات</div>
+      <p class="desc">مکمل اردو ترجمہ — سائنسی تعلیم کی فلسفیانہ و نفسیاتی بنیادیں، اسلامی ورثہ، سیکھنے کے نظریات اور سائنٹومیٹرکس سمیت تمام 9 یونٹس۔</p>
+      <a class="btn free" href="8627-Science-Education-Foundation-Urdu.pdf" download>مفت ڈاؤن لوڈ</a>
+    </div>
+
+    <div class="book" data-cat="spec" data-keys="8628 سائنسی تعلیم میں جائزہ assessment science education">
+      <span class="code">کورس 8628</span><span class="cat">اسپیشلائزیشن</span>
+      <h3>سائنسی تعلیم میں جائزہ</h3>
+      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 201 صفحات</div>
+      <p class="desc">مکمل اردو ترجمہ — جائزے کی اقسام، علمی و اعلیٰ صلاحیتوں کا جائزہ، عملی امتحانات اور تشخیصی تکنیکوں سمیت تمام 9 یونٹس۔</p>
+      <a class="btn free" href="8628-Assessment-Science-Education-Urdu.pdf" download>مفت ڈاؤن لوڈ</a>
+    </div>
+
+    <div class="book" data-cat="spec" data-keys="8629 لیبارٹری کی تنظیم انتظام حفاظتی طریقے laboratory organization management safety">
+      <span class="code">کورس 8629</span><span class="cat">اسپیشلائزیشن</span>
+      <h3>لیبارٹری کی تنظیم، انتظام اور حفاظتی طریقے</h3>
+      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 228 صفحات</div>
+      <p class="desc">مکمل اردو ترجمہ — لیبارٹری کا ڈیزائن، آلات، کیمیکلز کا ذخیرہ، طلبہ کی تشخیص، حادثات سے بچاؤ اور ابتدائی طبی امداد سمیت تمام 9 یونٹس۔</p>
+      <a class="btn free" href="8629-Laboratory-Organization-Urdu.pdf" download>مفت ڈاؤن لوڈ</a>
+    </div>
+
+    <div class="book" data-cat="spec" data-keys="8638 اسکولوں میں جنرل سائنس general science schools">
+      <span class="code">کورس 8638</span><span class="cat">اسپیشلائزیشن</span>
+      <h3>اسکولوں میں جنرل سائنس</h3>
+      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 317 صفحات</div>
+      <p class="desc">مکمل اردو ترجمہ — سائنس کی نوعیت، تدریسی حکمتِ عملیاں، معاونات، جائزہ اور سائنسی تصورات کی تدریس سمیت تمام 9 یونٹس۔</p>
+      <a class="btn free" href="8638-General-Science-Schools-Urdu.pdf" download>مفت ڈاؤن لوڈ</a>
+    </div>
+
     <div class="book" data-cat="spec" data-keys="8615 تعلیمی اداروں میں انتظامی حکمت عملی management strategies educational institutions">
       <span class="code">کورس 8615</span><span class="cat">اسپیشلائزیشن</span>
       <h3>تعلیمی اداروں میں انتظامی حکمتِ عملی</h3>
@@ -421,6 +471,14 @@
     <div class="step"><div class="n">3</div><h4>پڑھیں</h4><p>پی ڈی ایف فوراً ڈاؤن لوڈ ہو جائے گی — موبائل یا کمپیوٹر پر پڑھیں</p></div>
   </div>
 
+  <div class="promo">
+    <div class="txt">
+      <h3>🖨️ خاور گرافکس — پرنٹنگ و ڈیزائننگ</h3>
+      <p>نوٹس، اسائنمنٹ، تھیسز کی پرنٹنگ • بائنڈنگ • فوٹو کاپی • وزٹنگ کارڈ — کمبو مارکیٹ، ٹبہ سلطان پور</p>
+    </div>
+    <a class="cta" href="https://wa.me/923055991228">واٹس ایپ کریں: 03055991228</a>
+  </div>
+
   <div class="sec-title" id="about">
     <h2>ہمارے بارے میں</h2>
   </div>
@@ -447,9 +505,13 @@
   </div>
 </div>
 
+<!-- ADSENSE SLOT: home-bottom — AdSense منظور ہونے پر اشتہاری کوڈ یہاں پیسٹ کریں -->
+<div class="adslot" id="ad-home-bottom"></div>
+
 <footer>
   <div><b>Dogar Books</b> — مفت اردو کتب</div>
   <div>تمام کتب مفت ڈاؤن لوڈ کے لیے • تعلیمی مقاصد کے لیے</div>
+  <div style="margin-top:.4rem;"><a href="privacy.html">پرائیویسی پالیسی</a></div>
 </footer>
 
 <script>
