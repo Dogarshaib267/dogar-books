@@ -3,205 +3,382 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dogar Books — مفت اردو کتب ڈاؤن لوڈ</title>
-<meta name="description" content="Dogar Books — بی ایڈ اردو ترجمہ شدہ کتب مفت ڈاؤن لوڈ کریں">
+<title>Dogar Books — بی ایڈ اردو کتب | مفت ڈاؤن لوڈ</title>
+<meta name="description" content="Dogar Books — علامہ اقبال اوپن یونیورسٹی بی ایڈ کی مکمل اردو ترجمہ شدہ درسی کتب، بالکل مفت ڈاؤن لوڈ کریں۔">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#1a3c5e; --green:#2a5d3a; --bg:#f4f7fb; --card:#ffffff; --muted:#5b6b7f;
+    --ink:#12395e; --ink2:#1a5a8a; --green:#1e7a4c; --gold:#b8860b;
+    --bg:#f4f7fb; --card:#ffffff; --muted:#5b6b7f; --line:#e3eaf2;
   }
   *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
   body{
     font-family:'Noto Nastaliq Urdu','Jameel Noori Nastaleeq','Urdu Typesetting',serif;
     background:var(--bg); color:#1c1c1c; line-height:2.1;
   }
-  header{
-    background:linear-gradient(135deg,#12395e,#1a5a8a);
-    color:#fff; text-align:center; padding:2.6rem 1rem 2rem;
+  /* ---------- nav ---------- */
+  nav{
+    position:sticky; top:0; z-index:50;
+    background:rgba(16,40,63,.96); backdrop-filter:blur(6px);
+    color:#fff; box-shadow:0 2px 12px rgba(0,0,0,.15);
   }
-  header .shop{font-size:1rem; opacity:.85;}
-  header h1{font-size:2rem; margin:.3rem 0;}
-  header p{font-size:1rem; opacity:.9; max-width:36rem; margin:0 auto;}
-  .wrap{max-width:60rem; margin:0 auto; padding:1.5rem 1rem 3rem;}
-  .intro{text-align:center; margin:1.2rem 0 2rem; color:var(--muted); font-size:1.05rem;}
-  .books{display:grid; grid-template-columns:repeat(auto-fit,minmax(17rem,1fr)); gap:1.4rem;}
+  nav .bar{max-width:64rem; margin:0 auto; padding:.7rem 1rem; display:flex; align-items:center; justify-content:space-between; gap:1rem;}
+  nav .brand{font-weight:700; font-size:1.25rem; color:#fff; text-decoration:none;}
+  nav .brand small{display:block; font-size:.8rem; font-weight:400; opacity:.75;}
+  nav .links{display:flex; gap:1.2rem;}
+  nav .links a{color:#dce8f3; text-decoration:none; font-size:1rem;}
+  nav .links a:hover{color:#fff;}
+  @media(max-width:560px){ nav .links{display:none;} }
+  /* ---------- hero ---------- */
+  .hero{
+    background:linear-gradient(135deg,#0e2c4a 0%,#1a5a8a 60%,#237a5e 100%);
+    color:#fff; text-align:center; padding:3.2rem 1rem 2.6rem; position:relative; overflow:hidden;
+  }
+  .hero::after{
+    content:""; position:absolute; inset:0;
+    background:radial-gradient(circle at 80% 20%, rgba(255,255,255,.12), transparent 40%);
+    pointer-events:none;
+  }
+  .hero h1{font-size:2.3rem; margin:.4rem 0; position:relative;}
+  .hero .tag{display:inline-block; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.35);
+    border-radius:30px; padding:.15rem 1.2rem; font-size:.95rem; position:relative;}
+  .hero p{opacity:.92; max-width:38rem; margin:.8rem auto 0; font-size:1.05rem; position:relative;}
+  .stats{display:flex; justify-content:center; gap:2.2rem; margin-top:1.6rem; position:relative; flex-wrap:wrap;}
+  .stats div{text-align:center;}
+  .stats b{font-size:1.7rem; display:block;}
+  .stats span{font-size:.95rem; opacity:.85;}
+  /* ---------- search ---------- */
+  .searchbar{max-width:40rem; margin:-1.5rem auto 0; padding:0 1rem; position:relative; z-index:5;}
+  .searchbar .box{
+    background:#fff; border-radius:16px; box-shadow:0 8px 28px rgba(14,44,74,.18);
+    display:flex; align-items:center; padding:.35rem .5rem .35rem 1.2rem; gap:.6rem;
+  }
+  .searchbar input{
+    flex:1; border:0; outline:0; font-family:inherit; font-size:1.1rem; background:transparent; color:#1c1c1c;
+  }
+  .searchbar .icon{font-size:1.3rem; opacity:.55;}
+  /* ---------- sections ---------- */
+  .wrap{max-width:64rem; margin:0 auto; padding:2rem 1rem 3rem;}
+  .sec-title{text-align:center; margin:2.2rem 0 1rem;}
+  .sec-title h2{font-size:1.7rem; color:var(--ink);}
+  .sec-title p{color:var(--muted); font-size:1.02rem;}
+  /* ---------- filter chips ---------- */
+  .chips{display:flex; justify-content:center; gap:.7rem; flex-wrap:wrap; margin:1.2rem 0 1.8rem;}
+  .chip{
+    border:2px solid var(--line); background:#fff; color:var(--ink);
+    border-radius:30px; padding:.25rem 1.3rem; font-family:inherit; font-size:1rem; cursor:pointer;
+    transition:all .15s ease;
+  }
+  .chip:hover{border-color:var(--ink2);}
+  .chip.active{background:var(--ink); border-color:var(--ink); color:#fff;}
+  .count-note{text-align:center; color:var(--muted); font-size:.98rem; margin-bottom:1rem;}
+  /* ---------- books ---------- */
+  .books{display:grid; grid-template-columns:repeat(auto-fill,minmax(17.5rem,1fr)); gap:1.4rem;}
   .book{
-    background:var(--card); border-radius:14px; padding:1.6rem 1.4rem;
-    box-shadow:0 4px 18px rgba(18,57,94,.10); border-top:5px solid var(--ink);
-    display:flex; flex-direction:column; gap:.6rem;
+    background:var(--card); border-radius:16px; padding:1.5rem 1.4rem;
+    box-shadow:0 4px 18px rgba(18,57,94,.09); border-top:5px solid var(--ink);
+    display:flex; flex-direction:column; gap:.55rem; transition:transform .15s ease, box-shadow .15s ease;
   }
-  .book:nth-child(2){border-top-color:var(--green);}
-  .book:nth-child(3){border-top-color:#8a5a1a;}
-  .book:nth-child(4){border-top-color:#5e2a6e;}
-  .book:nth-child(5){border-top-color:#1a6e5e;}
-  .book:nth-child(6){border-top-color:#a03a2a;}
+  .book:hover{transform:translateY(-4px); box-shadow:0 10px 28px rgba(18,57,94,.16);}
   .book .code{
     display:inline-block; align-self:flex-start; background:#e8eef4; color:var(--ink);
-    border-radius:20px; padding:.1rem .9rem; font-size:.95rem; font-weight:700;
+    border-radius:20px; padding:.05rem .9rem; font-size:.92rem; font-weight:700;
   }
-  .book h2{font-size:1.35rem; color:var(--ink); line-height:1.9;}
-  .book .meta{color:var(--muted); font-size:.98rem;}
-  .book p.desc{font-size:1rem; flex:1;}
+  .book .cat{display:inline-block; align-self:flex-start; font-size:.85rem; color:var(--muted);
+    background:#f1f5f9; border-radius:14px; padding:0 .8rem;}
+  .book h3{font-size:1.3rem; color:var(--ink); line-height:1.9;}
+  .book .meta{color:var(--muted); font-size:.95rem;}
+  .book p.desc{font-size:.98rem; flex:1; color:#333;}
   .btn{
     display:inline-block; text-align:center; text-decoration:none; color:#fff;
-    background:var(--ink); border-radius:10px; padding:.55rem 1.4rem; font-size:1.05rem;
+    background:var(--ink); border-radius:10px; padding:.5rem 1.4rem; font-size:1.05rem;
     font-family:inherit; margin-top:.4rem; transition:transform .15s ease, box-shadow .15s ease;
   }
-  .book:nth-child(2) .btn{background:var(--green);}
-  .book:nth-child(3) .btn{background:#8a5a1a;}
-  .book:nth-child(4) .btn{background:#5e2a6e;}
-  .book:nth-child(5) .btn{background:#1a6e5e;}
-  .book:nth-child(6) .btn{background:#a03a2a;}
   .btn:hover{transform:translateY(-2px); box-shadow:0 6px 16px rgba(0,0,0,.18);}
+  .btn.free{background:var(--green);}
+  .noresult{display:none; text-align:center; color:var(--muted); padding:2rem; font-size:1.1rem;}
+  /* ---------- steps ---------- */
+  .steps{display:grid; grid-template-columns:repeat(auto-fit,minmax(14rem,1fr)); gap:1.2rem; margin-top:1rem;}
+  .step{background:#fff; border-radius:14px; padding:1.4rem 1.2rem; text-align:center;
+    box-shadow:0 4px 16px rgba(18,57,94,.08); border:1px solid var(--line);}
+  .step .n{display:inline-flex; width:2.6rem; height:2.6rem; border-radius:50%;
+    background:var(--ink); color:#fff; align-items:center; justify-content:center;
+    font-size:1.2rem; font-weight:700; margin-bottom:.5rem;}
+  .step h4{color:var(--ink); font-size:1.15rem;}
+  .step p{font-size:.98rem; color:#444;}
+  /* ---------- about ---------- */
+  .about{background:#fff; border-radius:16px; padding:1.8rem 1.6rem; box-shadow:0 4px 16px rgba(18,57,94,.08);
+    border:1px solid var(--line); margin-top:1rem;}
+  .about h2{color:var(--ink); font-size:1.5rem; margin-bottom:.5rem;}
+  .about p{color:#333; font-size:1.02rem;}
+  .about ul{margin:.8rem 1.2rem 0 0; color:#333;}
+  .about li{margin-bottom:.3rem;}
   .note{
-    margin-top:2rem; background:#fffbe8; border:1px solid #e7d98b; border-radius:10px;
+    margin-top:1.6rem; background:#fffbe8; border:1px solid #e7d98b; border-radius:10px;
     padding:1rem 1.3rem; font-size:.98rem; color:#6a5d1e; text-align:center;
   }
-  footer{
-    background:#10283f; color:#cfe0ef; text-align:center; padding:1.8rem 1rem; font-size:.98rem;
+  /* ---------- contact ---------- */
+  .contact{background:linear-gradient(135deg,#0e2c4a,#1a5a8a); color:#fff; border-radius:16px;
+    padding:2rem 1.5rem; text-align:center; margin-top:1rem;}
+  .contact h2{font-size:1.5rem;}
+  .contact p{opacity:.9;}
+  .wa{
+    display:inline-block; margin-top:1rem; background:#25d366; color:#fff; text-decoration:none;
+    border-radius:12px; padding:.55rem 2rem; font-family:inherit; font-size:1.1rem; font-weight:700;
+    transition:transform .15s ease;
   }
-  footer .wa{
-    display:inline-block; margin-top:.7rem; background:#25d366; color:#fff; text-decoration:none;
-    border-radius:10px; padding:.45rem 1.5rem; font-family:inherit; font-size:1.05rem;
-  }
-  footer .addr{opacity:.8; font-size:.92rem; margin-top:.5rem;}
+  .wa:hover{transform:translateY(-2px);}
+  .contact .addr{opacity:.8; font-size:.95rem; margin-top:.8rem;}
+  /* ---------- footer ---------- */
+  footer{background:#0b1f33; color:#9fb4c8; text-align:center; padding:1.6rem 1rem; font-size:.95rem;}
+  footer b{color:#dce8f3;}
 </style>
 </head>
 <body>
 
-<header>
-  <div class="shop">Dogar Books</div>
-  <h1>مفت اردو کتب</h1>
-  <p>بی ایڈ (1.5 سالہ) کی اردو ترجمہ شدہ درسی کتب — طلبہ کے لیے بالکل مفت ڈاؤن لوڈ کریں</p>
-</header>
-
-<div class="wrap">
-  <p class="intro">نیچے دی گئی کتابوں پر کلک کریں، پی ڈی ایف فوراً ڈاؤن لوڈ ہو جائے گی۔</p>
-
-  <div class="books">
-    <div class="book">
-      <span class="code">کورس 8601</span>
-      <h2>تدریس کے عمومی طریقے</h2>
-      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 288 صفحات</div>
-      <p class="desc">علامہ اقبال اوپن یونیورسٹی کی درسی کتاب کا مکمل اردو ترجمہ — تدریس، سبق کی منصوبہ بندی، تحریک، سرگرمی کا طریقہ، مباحثہ، تعاونی تعلم، انفرادی تدریس اور تدریسی آلات سمیت تمام 9 یونٹس۔</p>
-      <a class="btn" href="8601-General-Methods-of-Teaching-Urdu.pdf" download>ڈاؤن لوڈ کریں</a>
-    </div>
-
-    <div class="book">
-      <span class="code">کورس 8602</span>
-      <h2>تعلیمی تشخیص و جائزہ</h2>
-      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 247 صفحات</div>
-      <p class="desc">علامہ اقبال اوپن یونیورسٹی کی درسی کتاب کا مکمل اردو ترجمہ — پیمائش، ٹیسٹوں کی اقسام، اعتباریت، صداقت، ٹیسٹ سکورز کی تشریح اور رپورٹنگ سمیت تمام 9 یونٹس۔</p>
-      <a class="btn" href="8602-Educational-Assessment-Evaluation-Urdu.pdf" download>ڈاؤن لوڈ کریں</a>
-    </div>
-
-    <div class="book">
-      <span class="code">کورس 8603</span>
-      <h2>نصاب کی تشکیل</h2>
-      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 252 صفحات</div>
-      <p class="desc">علامہ اقبال اوپن یونیورسٹی کی درسی کتاب کا مکمل اردو ترجمہ — نصاب کی نوعیت، پاکستان میں نصاب کی تاریخ، نصاب کی بنیادیں، تصوراتی ڈھانچہ، مقاصد و اغراض، مواد کا انتخاب، نصاب کی تشخیص اور تقابلی تناظر سمیت تمام 9 یونٹس۔</p>
-      <a class="btn" href="8603-Curriculum-Development-Urdu.pdf" download>ڈاؤن لوڈ کریں</a>
-    </div>
-
-    <div class="book">
-      <span class="code">کورس 8604</span>
-      <h2>تعلیم میں تحقیقی طریقے</h2>
-      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 411 صفحات</div>
-      <p class="desc">علامہ اقبال اوپن یونیورسٹی کی درسی کتاب کا مکمل اردو ترجمہ — تحقیق کی اقسام، تاریخی و تجرباتی تحقیق، نمونہ گیری، تحقیقی تجویز اور رپورٹ نویسی سمیت تمام 9 یونٹس۔</p>
-      <a class="btn" href="8604-Research-Methods-Education-Urdu.pdf" download>ڈاؤن لوڈ کریں</a>
-    </div>
-
-    <div class="book">
-      <span class="code">کورس 8605</span>
-      <h2>تعلیمی قیادت و انتظام</h2>
-      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 225 صفحات</div>
-      <p class="desc">علامہ اقبال اوپن یونیورسٹی کی درسی کتاب کا مکمل اردو ترجمہ — انتظامیہ، نگرانی، تعلیمی منصوبہ بندی، اسکولی نظم و ضبط، وسائل کا انتظام اور قیادت سمیت تمام 9 یونٹس۔</p>
-      <a class="btn" href="8605-Educational-Leadership-Management-Urdu.pdf" download>ڈاؤن لوڈ کریں</a>
-    </div>
-
-    <div class="book">
-      <span class="code">کورس 8609</span>
-      <h2>فلسفۂ تعلیم</h2>
-      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 277 صفحات</div>
-      <p class="desc">علامہ اقبال اوپن یونیورسٹی کی درسی کتاب کا مکمل اردو ترجمہ — فلسفے کا تعارف و اقسام، علم کے ذرائع، یونانی و مغربی فلاسفہ، مسلم مفکرین اور معاصر فلسفے سمیت تمام 9 یونٹس۔</p>
-      <a class="btn" href="8609-Philosophy-of-Education-Urdu.pdf" download>ڈاؤن لوڈ کریں</a>
-    </div>
-
-    <div class="book">
-      <span class="code">کورس 8610</span>
-      <h2>انسانی نشوونما اور تعلم</h2>
-      <div class="meta">بی ایڈ (1.5 / 2.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 173 صفحات</div>
-      <p class="desc">علامہ اقبال اوپن یونیورسٹی کی درسی کتاب کا مکمل اردو ترجمہ — انسانی نشوونما، ذہنی و سماجی نشوونما، ذہانت، تعلم کے نظریات اور انفرادی اختلافات سمیت تمام 9 یونٹس۔</p>
-      <a class="btn" href="8610-Human-Development-Learning-Urdu.pdf" download>ڈاؤن لوڈ کریں</a>
-    </div>
-
-    <div class="book">
-      <span class="code">کورس 8611</span>
-      <h2>تنقیدی سوچ اور عکاسی کی مشقیں</h2>
-      <div class="meta">بی ایڈ (1.5 / 4 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 197 صفحات</div>
-      <p class="desc">علامہ اقبال اوپن یونیورسٹی کی درسی کتاب کا مکمل اردو ترجمہ — تنقیدی سوچ، تنقیدی نظریہ و تدریس، عکاسی کی مشقیں، عملی تحقیق اور تنقیدی تحریر سمیت تمام 9 یونٹس۔</p>
-      <a class="btn" href="8611-Critical-Thinking-Reflective-Practices-Urdu.pdf" download>ڈاؤن لوڈ کریں</a>
-    </div>
-
-    <div class="book">
-      <span class="code">کورس 8612</span>
-      <h2>تدریس میں پیشہ ورانہ مہارت</h2>
-      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 205 صفحات</div>
-      <p class="desc">علامہ اقبال اوپن یونیورسٹی کی درسی کتاب کا مکمل اردو ترجمہ — پیشے کا تصور، پیشہ ورانہ اخلاقیات، معلم کے اوصاف، قومی پیشہ ورانہ معیارات اور ڈیجیٹل ٹیکنالوجیز سمیت تمام 9 یونٹس۔</p>
-      <a class="btn" href="8612-Professionalism-Teaching-Urdu.pdf" download>ڈاؤن لوڈ کریں</a>
-    </div>
-
-    <div class="book">
-      <span class="code">کورس 8614</span>
-      <h2>تعلیمی شماریات</h2>
-      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 106 صفحات</div>
-      <p class="desc">علامہ اقبال اوپن یونیورسٹی کی درسی کتاب کا مکمل اردو ترجمہ — بنیادی شماریاتی تصورات، گرافکس، توصیفی و استنباطی شماریات، باہمی تعلق، رجعت اور کائی مربع سمیت تمام 9 یونٹس۔</p>
-      <a class="btn" href="8614-Educational-Statistics-Urdu.pdf" download>ڈاؤن لوڈ کریں</a>
-    </div>
-
-    <div class="book">
-      <span class="code">کورس 8623</span>
-      <h2>ایلیمنٹری ایجوکیشن</h2>
-      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 415 صفحات</div>
-      <p class="desc">علامہ اقبال اوپن یونیورسٹی کی درسی کتاب کا مکمل اردو ترجمہ — بچے کی نشوونما، نصاب، تدریسی حکمتِ عملی، کلاس روم مینجمنٹ اور تشخیص سمیت تمام 9 یونٹس۔</p>
-      <a class="btn" href="8623-Elementary-Education-Urdu.pdf" download>ڈاؤن لوڈ کریں</a>
-    </div>
-
-    <div class="book">
-      <span class="code">کورس 8624</span>
-      <h2>ثانوی تعلیم</h2>
-      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 221 صفحات</div>
-      <p class="desc">علامہ اقبال اوپن یونیورسٹی کی درسی کتاب کا مکمل اردو ترجمہ — ثانوی تعلیم کی نوعیت و اہمیت، پاکستان میں ثانوی تعلیم، نصاب، جائزہ، تقابلی تعلیم اور اساتذہ کی تربیت سمیت تمام 9 یونٹس۔</p>
-      <a class="btn" href="8624-Secondary-Education-Urdu.pdf" download>ڈاؤن لوڈ کریں</a>
-    </div>
-
-    <div class="book">
-      <span class="code">کورس 8625</span>
-      <h2>اعلیٰ تعلیم</h2>
-      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 203 صفحات</div>
-      <p class="desc">علامہ اقبال اوپن یونیورسٹی کی درسی کتاب کا مکمل اردو ترجمہ — اعلیٰ تعلیم کا تعارف، یونیورسٹی کا کردار، ترقی یافتہ و ترقی پذیر ممالک میں اعلیٰ تعلیم، معاشیات، جائزہ اور مسائل سمیت تمام 9 یونٹس۔</p>
-      <a class="btn" href="8625-Higher-Education-Urdu.pdf" download>ڈاؤن لوڈ کریں</a>
-    </div>
-
-    <div class="book">
-      <span class="code">کورس 8626</span>
-      <h2>پاکستان میں معلمین کی تعلیم</h2>
-      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 323 صفحات</div>
-      <p class="desc">علامہ اقبال اوپن یونیورسٹی کی درسی کتاب کا مکمل اردو ترجمہ — پاکستان میں معلمین کی تعلیم کے تمام 9 یونٹس۔</p>
-      <a class="btn" href="8626-Teacher-Education-Pakistan-Urdu.pdf" download>ڈاؤن لوڈ کریں</a>
+<nav>
+  <div class="bar">
+    <a class="brand" href="#">Dogar Books<small>مفت اردو بی ایڈ کتب</small></a>
+    <div class="links">
+      <a href="#books">کتب</a>
+      <a href="#guide">طریقہ استعمال</a>
+      <a href="#about">ہمارے بارے میں</a>
+      <a href="#contact">رابطہ</a>
     </div>
   </div>
+</nav>
 
-  <div class="note">یہ تراجم تعلیمی مقاصد کے لیے تیار کیے گئے ہیں۔ اصل انگریزی کتب علامہ اقبال اوپن یونیورسٹی کی ملکیت ہیں۔</div>
+<section class="hero">
+  <span class="tag">100% مفت — کوئی فیس نہیں، کوئی اکاؤنٹ نہیں</span>
+  <h1>Dogar Books</h1>
+  <p>علامہ اقبال اوپن یونیورسٹی بی ایڈ کی مکمل اردو ترجمہ شدہ درسی کتب — طلبہ اور اساتذہ کے لیے بالکل مفت ڈاؤن لوڈ کریں</p>
+  <div class="stats">
+    <div><b>14</b><span>اردو کتب</span></div>
+    <div><b>مفت</b><span>ڈاؤن لوڈ</span></div>
+    <div><b>9</b><span>یونٹس فی کتاب</span></div>
+  </div>
+</section>
+
+<div class="searchbar">
+  <div class="box">
+    <span class="icon">🔍</span>
+    <input id="q" type="text" placeholder="کتاب تلاش کریں… (مثلاً: نصاب، 8603، philosophy)">
+  </div>
+</div>
+
+<div class="wrap" id="books">
+  <div class="sec-title">
+    <h2>تمام کتب</h2>
+    <p>اپنی مطلوبہ کتاب تلاش کریں یا زمرے کے حساب سے دیکھیں</p>
+  </div>
+
+  <div class="chips" id="chips">
+    <button class="chip active" data-cat="all">تمام کتب</button>
+    <button class="chip" data-cat="sem1">پہلا سمسٹر</button>
+    <button class="chip" data-cat="sem2">دوسرا سمسٹر</button>
+    <button class="chip" data-cat="sem3">تیسرا سمسٹر</button>
+    <button class="chip" data-cat="spec">اسپیشلائزیشن</button>
+  </div>
+  <div class="count-note" id="countNote"></div>
+
+  <div class="books" id="grid">
+
+    <div class="book" data-cat="sem1" data-keys="8601 تدریس کے عمومی طریقے general methods teaching">
+      <span class="code">کورس 8601</span><span class="cat">پہلا سمسٹر</span>
+      <h3>تدریس کے عمومی طریقے</h3>
+      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 288 صفحات</div>
+      <p class="desc">مکمل اردو ترجمہ — تدریس، سبق کی منصوبہ بندی، تحریک، سرگرمی کا طریقہ، مباحثہ، تعاونی تعلم، انفرادی تدریس اور تدریسی آلات سمیت تمام 9 یونٹس۔</p>
+      <a class="btn free" href="8601-General-Methods-of-Teaching-Urdu.pdf" download>مفت ڈاؤن لوڈ</a>
+    </div>
+
+    <div class="book" data-cat="sem1" data-keys="8602 تعلیمی تشخیص و جائزہ assessment evaluation">
+      <span class="code">کورس 8602</span><span class="cat">پہلا سمسٹر</span>
+      <h3>تعلیمی تشخیص و جائزہ</h3>
+      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 247 صفحات</div>
+      <p class="desc">مکمل اردو ترجمہ — پیمائش، ٹیسٹوں کی اقسام، اعتباریت، صداقت، ٹیسٹ سکورز کی تشریح اور رپورٹنگ سمیت تمام 9 یونٹس۔</p>
+      <a class="btn free" href="8602-Educational-Assessment-Evaluation-Urdu.pdf" download>مفت ڈاؤن لوڈ</a>
+    </div>
+
+    <div class="book" data-cat="sem1" data-keys="8603 نصاب کی تشکیل curriculum development">
+      <span class="code">کورس 8603</span><span class="cat">پہلا سمسٹر</span>
+      <h3>نصاب کی تشکیل</h3>
+      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 252 صفحات</div>
+      <p class="desc">مکمل اردو ترجمہ — نصاب کی نوعیت، پاکستان میں نصاب کی تاریخ، نصاب کی بنیادیں، تصوراتی ڈھانچہ، مقاصد و اغراض، مواد کا انتخاب، نصاب کی تشخیص اور تقابلی تناظر سمیت تمام 9 یونٹس۔</p>
+      <a class="btn free" href="8603-Curriculum-Development-Urdu.pdf" download>مفت ڈاؤن لوڈ</a>
+    </div>
+
+    <div class="book" data-cat="sem1" data-keys="8604 تعلیم میں تحقیقی طریقے research methods">
+      <span class="code">کورس 8604</span><span class="cat">پہلا سمسٹر</span>
+      <h3>تعلیم میں تحقیقی طریقے</h3>
+      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 411 صفحات</div>
+      <p class="desc">مکمل اردو ترجمہ — تحقیق کی اقسام، تاریخی و تجرباتی تحقیق، نمونہ گیری، تحقیقی تجویز اور رپورٹ نویسی سمیت تمام 9 یونٹس۔</p>
+      <a class="btn free" href="8604-Research-Methods-Education-Urdu.pdf" download>مفت ڈاؤن لوڈ</a>
+    </div>
+
+    <div class="book" data-cat="sem1" data-keys="8605 تعلیمی قیادت و انتظام leadership management">
+      <span class="code">کورس 8605</span><span class="cat">پہلا سمسٹر</span>
+      <h3>تعلیمی قیادت و انتظام</h3>
+      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 225 صفحات</div>
+      <p class="desc">مکمل اردو ترجمہ — انتظامیہ، نگرانی، تعلیمی منصوبہ بندی، اسکولی نظم و ضبط، وسائل کا انتظام اور قیادت سمیت تمام 9 یونٹس۔</p>
+      <a class="btn free" href="8605-Educational-Leadership-Management-Urdu.pdf" download>مفت ڈاؤن لوڈ</a>
+    </div>
+
+    <div class="book" data-cat="sem2" data-keys="8611 تنقیدی سوچ اور عکاسی کی مشقیں critical thinking reflective practices">
+      <span class="code">کورس 8611</span><span class="cat">دوسرا سمسٹر</span>
+      <h3>تنقیدی سوچ اور عکاسی کی مشقیں</h3>
+      <div class="meta">بی ایڈ (1.5 / 4 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 197 صفحات</div>
+      <p class="desc">مکمل اردو ترجمہ — تنقیدی سوچ، تنقیدی نظریہ و تدریس، عکاسی کی مشقیں، عملی تحقیق اور تنقیدی تحریر سمیت تمام 9 یونٹس۔</p>
+      <a class="btn free" href="8611-Critical-Thinking-Reflective-Practices-Urdu.pdf" download>مفت ڈاؤن لوڈ</a>
+    </div>
+
+    <div class="book" data-cat="sem3" data-keys="8609 فلسفۂ تعلیم philosophy education">
+      <span class="code">کورس 8609</span><span class="cat">تیسرا سمسٹر</span>
+      <h3>فلسفۂ تعلیم</h3>
+      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 277 صفحات</div>
+      <p class="desc">مکمل اردو ترجمہ — فلسفے کا تعارف و اقسام، علم کے ذرائع، یونانی و مغربی فلاسفہ، مسلم مفکرین اور معاصر فلسفے سمیت تمام 9 یونٹس۔</p>
+      <a class="btn free" href="8609-Philosophy-of-Education-Urdu.pdf" download>مفت ڈاؤن لوڈ</a>
+    </div>
+
+    <div class="book" data-cat="sem3" data-keys="8610 انسانی نشوونما اور تعلم human development learning">
+      <span class="code">کورس 8610</span><span class="cat">تیسرا سمسٹر</span>
+      <h3>انسانی نشوونما اور تعلم</h3>
+      <div class="meta">بی ایڈ (1.5 / 2.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 173 صفحات</div>
+      <p class="desc">مکمل اردو ترجمہ — انسانی نشوونما، ذہنی و سماجی نشوونما، ذہانت، تعلم کے نظریات اور انفرادی اختلافات سمیت تمام 9 یونٹس۔</p>
+      <a class="btn free" href="8610-Human-Development-Learning-Urdu.pdf" download>مفت ڈاؤن لوڈ</a>
+    </div>
+
+    <div class="book" data-cat="sem3" data-keys="8612 تدریس میں پیشہ ورانہ مہارت professionalism teaching">
+      <span class="code">کورس 8612</span><span class="cat">تیسرا سمسٹر</span>
+      <h3>تدریس میں پیشہ ورانہ مہارت</h3>
+      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 205 صفحات</div>
+      <p class="desc">مکمل اردو ترجمہ — پیشے کا تصور، پیشہ ورانہ اخلاقیات، معلم کے اوصاف، قومی پیشہ ورانہ معیارات اور ڈیجیٹل ٹیکنالوجیز سمیت تمام 9 یونٹس۔</p>
+      <a class="btn free" href="8612-Professionalism-Teaching-Urdu.pdf" download>مفت ڈاؤن لوڈ</a>
+    </div>
+
+    <div class="book" data-cat="sem3" data-keys="8614 تعلیمی شماریات statistics">
+      <span class="code">کورس 8614</span><span class="cat">تیسرا سمسٹر</span>
+      <h3>تعلیمی شماریات</h3>
+      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 106 صفحات</div>
+      <p class="desc">مکمل اردو ترجمہ — بنیادی شماریاتی تصورات، گرافکس، توصیفی و استنباطی شماریات، باہمی تعلق، رجعت اور کائی مربع سمیت تمام 9 یونٹس۔</p>
+      <a class="btn free" href="8614-Educational-Statistics-Urdu.pdf" download>مفت ڈاؤن لوڈ</a>
+    </div>
+
+    <div class="book" data-cat="spec" data-keys="8623 ایلیمنٹری ایجوکیشن elementary education">
+      <span class="code">کورس 8623</span><span class="cat">اسپیشلائزیشن</span>
+      <h3>ایلیمنٹری ایجوکیشن</h3>
+      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 415 صفحات</div>
+      <p class="desc">مکمل اردو ترجمہ — بچے کی نشوونما، نصاب، تدریسی حکمتِ عملی، کلاس روم مینجمنٹ اور تشخیص سمیت تمام 9 یونٹس۔</p>
+      <a class="btn free" href="8623-Elementary-Education-Urdu.pdf" download>مفت ڈاؤن لوڈ</a>
+    </div>
+
+    <div class="book" data-cat="spec" data-keys="8624 ثانوی تعلیم secondary education">
+      <span class="code">کورس 8624</span><span class="cat">اسپیشلائزیشن</span>
+      <h3>ثانوی تعلیم</h3>
+      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 221 صفحات</div>
+      <p class="desc">مکمل اردو ترجمہ — ثانوی تعلیم کی نوعیت و اہمیت، پاکستان میں ثانوی تعلیم، نصاب، جائزہ، تقابلی تعلیم اور اساتذہ کی تربیت سمیت تمام 9 یونٹس۔</p>
+      <a class="btn free" href="8624-Secondary-Education-Urdu.pdf" download>مفت ڈاؤن لوڈ</a>
+    </div>
+
+    <div class="book" data-cat="spec" data-keys="8625 اعلیٰ تعلیم higher education">
+      <span class="code">کورس 8625</span><span class="cat">اسپیشلائزیشن</span>
+      <h3>اعلیٰ تعلیم</h3>
+      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 203 صفحات</div>
+      <p class="desc">مکمل اردو ترجمہ — اعلیٰ تعلیم کا تعارف، یونیورسٹی کا کردار، ترقی یافتہ و ترقی پذیر ممالک میں اعلیٰ تعلیم، معاشیات، جائزہ اور مسائل سمیت تمام 9 یونٹس۔</p>
+      <a class="btn free" href="8625-Higher-Education-Urdu.pdf" download>مفت ڈاؤن لوڈ</a>
+    </div>
+
+    <div class="book" data-cat="spec" data-keys="8626 پاکستان میں معلمین کی تعلیم teacher education pakistan">
+      <span class="code">کورس 8626</span><span class="cat">اسپیشلائزیشن</span>
+      <h3>پاکستان میں معلمین کی تعلیم</h3>
+      <div class="meta">بی ایڈ (1.5 سالہ) &nbsp;•&nbsp; یونٹس 1 تا 9 &nbsp;•&nbsp; 323 صفحات</div>
+      <p class="desc">مکمل اردو ترجمہ — پاکستان میں معلمین کی تعلیم کے تمام 9 یونٹس۔</p>
+      <a class="btn free" href="8626-Teacher-Education-Pakistan-Urdu.pdf" download>مفت ڈاؤن لوڈ</a>
+    </div>
+
+  </div>
+  <div class="noresult" id="noresult">کوئی کتاب نہیں ملی — تلاش کے الفاظ بدل کر دوبارہ کوشش کریں۔</div>
+
+  <div class="sec-title" id="guide">
+    <h2>کتاب کیسے حاصل کریں؟</h2>
+    <p>صرف تین آسان مراحل</p>
+  </div>
+  <div class="steps">
+    <div class="step"><div class="n">1</div><h4>تلاش کریں</h4><p>اوپر سرچ باکس میں کتاب کا نام یا کورس کوڈ لکھیں</p></div>
+    <div class="step"><div class="n">2</div><h4>منتخب کریں</h4><p>اپنی مطلوبہ کتاب کے کارڈ پر "مفت ڈاؤن لوڈ" دبائیں</p></div>
+    <div class="step"><div class="n">3</div><h4>پڑھیں</h4><p>پی ڈی ایف فوراً ڈاؤن لوڈ ہو جائے گی — موبائل یا کمپیوٹر پر پڑھیں</p></div>
+  </div>
+
+  <div class="sec-title" id="about">
+    <h2>ہمارے بارے میں</h2>
+  </div>
+  <div class="about">
+    <h2>Dogar Books کیا ہے؟</h2>
+    <p>Dogar Books ایک مفت تعلیمی پلیٹ فارم ہے جو علامہ اقبال اوپن یونیورسٹی کے بی ایڈ پروگرام کی درسی کتب کے مکمل اردو تراجم فراہم کرتا ہے۔ ہمارا مقصد دور دراز علاقوں کے طلبہ تک معیاری تعلیمی مواد مفت پہنچانا ہے۔</p>
+    <ul>
+      <li>تمام کتب مکمل اردو ترجمے کے ساتھ — خلاصے نہیں، پوری کتاب</li>
+      <li>ہر کتاب میں تمام یونٹس، مقاصد، سرگرمیاں، سوالات اور حوالہ جات</li>
+      <li>ڈاؤن لوڈ بالکل مفت — کوئی فیس، کوئی اکاؤنٹ، کوئی حد نہیں</li>
+      <li>موبائل اور کمپیوٹر دونوں پر آسانی سے پڑھنے کے لیے پی ڈی ایف فارمیٹ</li>
+    </ul>
+    <div class="note">یہ تراجم تعلیمی مقاصد کے لیے تیار کیے گئے ہیں۔ اصل انگریزی کتب علامہ اقبال اوپن یونیورسٹی کی ملکیت ہیں۔</div>
+  </div>
+
+  <div class="sec-title" id="contact">
+    <h2>رابطہ کریں</h2>
+  </div>
+  <div class="contact">
+    <h2>کوئی کتاب چاہیے یا کوئی سوال؟</h2>
+    <p>واٹس ایپ پر پیغام بھیجیں — ہم جلد جواب دیں گے</p>
+    <a class="wa" href="https://wa.me/923055991228">واٹس ایپ: 03055991228</a>
+    <div class="addr">کمبو مارکیٹ، نزد نیشنل بینک، ٹبہ سلطان پور، وہاڑی</div>
+  </div>
 </div>
 
 <footer>
-  <div>Dogar Books — مفت اردو کتب</div>
-  <div class="addr">کمبو مارکیٹ، نزد نیشنل بینک، ٹبہ سلطان پور، وہاڑی</div>
-  <a class="wa" href="https://wa.me/923055991228">واٹس ایپ: 03055991228</a>
+  <div><b>Dogar Books</b> — مفت اردو کتب</div>
+  <div>تمام کتب مفت ڈاؤن لوڈ کے لیے • تعلیمی مقاصد کے لیے</div>
 </footer>
+
+<script>
+(function(){
+  var q = document.getElementById('q');
+  var chips = document.querySelectorAll('#chips .chip');
+  var books = Array.prototype.slice.call(document.querySelectorAll('#grid .book'));
+  var note = document.getElementById('countNote');
+  var noresult = document.getElementById('noresult');
+  var activeCat = 'all';
+  function apply(){
+    var term = q.value.trim();
+    var shown = 0;
+    books.forEach(function(b){
+      var okCat = (activeCat === 'all' || b.getAttribute('data-cat') === activeCat);
+      var okTerm = true;
+      if(term){
+        var keys = b.getAttribute('data-keys') || '';
+        okTerm = keys.indexOf(term) !== -1;
+      }
+      var show = okCat && okTerm;
+      b.style.display = show ? '' : 'none';
+      if(show) shown++;
+    });
+    noresult.style.display = shown ? 'none' : 'block';
+    note.textContent = shown + ' کتب دکھائی جا رہی ہیں';
+  }
+  q.addEventListener('input', apply);
+  chips.forEach(function(c){
+    c.addEventListener('click', function(){
+      chips.forEach(function(x){ x.classList.remove('active'); });
+      c.classList.add('active');
+      activeCat = c.getAttribute('data-cat');
+      apply();
+    });
+  });
+  apply();
+})();
+</script>
 
 </body>
 </html>
