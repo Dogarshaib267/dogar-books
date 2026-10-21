@@ -62,12 +62,6 @@
   <!-- ============ CUSTOMER VIEW ============ -->
   <div id="customerView">
     <div class="card" id="orderForm">
-      <label>Aap ka naam</label>
-      <input type="text" id="cName" placeholder="Misal: Ali Ahmad">
-
-      <label>Mobile number (WhatsApp wala)</label>
-      <input type="tel" id="cPhone" placeholder="03XX-XXXXXXX">
-
       <label>File select karein (PDF, photo ya document)</label>
       <div class="filebox" id="fileBox">
         <b>📄 File chunne ke liye yahan tap karein</b>
@@ -210,8 +204,7 @@ function readAsBase64(file){
 
 $("submitBtn").addEventListener("click", function(){
   var err = $("formErr"); err.classList.add("hidden");
-  var name = $("cName").value.trim(), phone = $("cPhone").value.trim();
-  if (!name || !phone) { err.textContent = "Naam aur mobile number lazmi likhein."; err.classList.remove("hidden"); return; }
+  var name = "", phone = "";
   if (!chosenFile) { err.textContent = "Pehle file select karein."; err.classList.remove("hidden"); return; }
   var btn = $("submitBtn"); btn.disabled = true; btn.textContent = "⏳ Bhej raha hai...";
   var oid = "KG-" + Math.floor(1000 + Math.random() * 9000);
@@ -273,14 +266,13 @@ function loadOrders(){
     $("orderCount").textContent = "— " + arr.length + " total, " + newCount + " naye";
     list.innerHTML = arr.slice(0, 40).map(function(o){
       var doneCls = o.status === "done" ? " done" : "";
-      var badge = o.status === "done" ? '<span class="badge done">HO GAYA</span>' : '<span class="badge">NAYA</span>';
+      var badge = o.status === "done" ? '<span class="badge done">HO GAYA</span>' : (o.status === "manual" ? '<span class="badge">MANUAL PRINT</span>' : '<span class="badge">NAYA</span>');
       return '<div class="order' + (o.status === "new" ? " new" : "") + '">' +
         '<div class="top"><span>' + esc(o.id) + '</span>' + badge + '</div>' +
-        '<div class="meta">🕐 ' + fmtTime(o.ts) + '<br>👤 ' + esc(o.name) + ' · 📞 ' + esc(o.phone) +
-        '<br>📄 ' + esc(o.fileName) + '<br>🖨️ ' + (o.ptype === "color" ? "Color" : "Black & White") + ' · ' + (o.pside === "double" ? "Double side" : "Single side") +
+        '<div class="meta">🕐 ' + fmtTime(o.ts) + '<br>📄 ' + esc(o.fileName) + '<br>🖨️ ' + (o.ptype === "color" ? "Color" : "Black & White") + ' · ' + (o.pside === "double" ? "Double side" : "Single side") +
         ' · ' + o.pages + ' pages × ' + o.copies + ' copies' +
         (o.total ? '<br>💰 Total: <b>Rs ' + o.total + '</b>' : '<br>💰 Total: counter par') +
-        (o.note ? '<br>📝 ' + esc(o.note) : '') + '</div>' +
+        (o.note ? '<br>📝 ' + esc(o.note) : '') + (o.agentNote ? '<br>⚠️ ' + esc(o.agentNote) : '') + '</div>' +
         '<div class="row"><button class="dl" onclick="downloadFile(\'' + o.id + '\', \'' + esc(o.fileName).replace(/'/g, "") + '\')">⬇ File Download</button>' +
         (o.status !== "done" ? '<button class="done" onclick="markDone(\'' + o.id + '\')">✔ Ho Gaya</button>' : '') +
         '</div></div>';
