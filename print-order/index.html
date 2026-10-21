@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ur">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Khawar Graphics — Online Print Order</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f1; color: #1c2b21; }
+  .head { background: linear-gradient(135deg, #0a4a2a, #0d6a3a); color: #fff; padding: 22px 16px 18px; text-align: center; }
+  .head h1 { font-size: 26px; letter-spacing: .5px; }
+  .head .urdu { font-size: 20px; margin-top: 2px; color: #ffe9a8; }
+  .head p { font-size: 13px; opacity: .9; margin-top: 6px; }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 16px; }
+  .card { background: #fff; border-radius: 14px; padding: 18px; box-shadow: 0 2px 10px rgba(0,0,0,.08); margin-bottom: 14px; }
+  label { display: block; font-weight: 600; font-size: 14px; margin: 12px 0 6px; }
+  label:first-child { margin-top: 0; }
+  input[type=text], input[type=tel], input[type=number], input[type=password] {
+    width: 100%; padding: 12px; border: 1.5px solid #cfd8d2; border-radius: 10px; font-size: 16px; background: #fbfdfc;
+  }
+  input:focus { outline: none; border-color: #0d6a3a; }
+  .filebox { border: 2px dashed #0d6a3a; border-radius: 12px; padding: 18px; text-align: center; background: #f2f9f4; cursor: pointer; }
+  .filebox b { color: #0a4a2a; font-size: 16px; }
+  .filebox small { display: block; color: #5a6b60; margin-top: 4px; }
+  .radio-row { display: flex; gap: 10px; }
+  .radio-row label { flex: 1; margin: 0; }
+  .radio-row input { display: none; }
+  .radio-row span { display: block; text-align: center; padding: 12px 6px; border: 1.5px solid #cfd8d2; border-radius: 10px; font-size: 15px; cursor: pointer; background: #fbfdfc; }
+  .radio-row input:checked + span { background: #0d6a3a; color: #fff; border-color: #0d6a3a; font-weight: 700; }
+  .total { background: #fff8e1; border: 1.5px solid #f5c542; border-radius: 10px; padding: 12px; text-align: center; font-size: 17px; font-weight: 700; color: #6b5200; margin-top: 14px; }
+  .btn { display: block; width: 100%; background: #0d6a3a; color: #fff; border: none; padding: 15px; font-size: 18px; font-weight: 700; border-radius: 12px; cursor: pointer; margin-top: 14px; }
+  .btn:disabled { background: #9db8a8; }
+  .btn.secondary { background: #34503f; font-size: 15px; padding: 11px; }
+  .note { font-size: 13px; color: #5a6b60; text-align: center; margin-top: 10px; line-height: 1.5; }
+  .success { text-align: center; padding: 10px 0; }
+  .success .oid { font-size: 34px; font-weight: 800; color: #0a4a2a; letter-spacing: 1px; margin: 8px 0; }
+  .hidden { display: none; }
+  /* dashboard */
+  .order { border: 1.5px solid #dfe7e1; border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #fbfdfc; }
+  .order.new { border-color: #f5c542; background: #fffdf2; }
+  .order .top { display: flex; justify-content: space-between; font-weight: 700; }
+  .order .meta { font-size: 13px; color: #44564b; margin-top: 4px; line-height: 1.55; }
+  .order .row { display: flex; gap: 8px; margin-top: 10px; }
+  .order .row button { flex: 1; padding: 10px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 14px; }
+  .dl { background: #0d6a3a; color: #fff; }
+  .done { background: #e3eae5; color: #23402f; }
+  .badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #f5c542; color: #4d3a00; }
+  .badge.done { background: #cfe3d4; color: #23402f; }
+  .err { color: #b3261e; font-size: 14px; margin-top: 8px; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="head">
+  <h1>KHAWAR GRAPHICS</h1>
+  <div class="urdu">آن لائن پرنٹ آرڈر</div>
+  <p>File bhejein, print tayyar milega — Near National Bank, Tibba Sultanpur · 0305 5991228</p>
+</div>
+
+<div class="wrap">
+
+  <!-- ============ CUSTOMER VIEW ============ -->
+  <div id="customerView">
+    <div class="card" id="orderForm">
+      <label>Aap ka naam</label>
+      <input type="text" id="cName" placeholder="Misal: Ali Ahmad">
+
+      <label>Mobile number (WhatsApp wala)</label>
+      <input type="tel" id="cPhone" placeholder="03XX-XXXXXXX">
+
+      <label>File select karein (PDF, photo ya document)</label>
+      <div class="filebox" id="fileBox">
+        <b>📄 File chunne ke liye yahan tap karein</b>
+        <small id="fileInfo">PDF / JPG / PNG / Word — zyada se zyada 8 MB</small>
+      </div>
+      <input type="file" id="cFile" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" class="hidden">
+
+      <label>Print ki qisam</label>
+      <div class="radio-row">
+        <label><input type="radio" name="ptype" value="bw" checked><span>Black &amp; White</span></label>
+        <label><input type="radio" name="ptype" value="color"><span>Color</span></label>
+      </div>
+
+      <label>Side</label>
+      <div class="radio-row">
+        <label><input type="radio" name="pside" value="single" checked><span>Single Side</span></label>
+        <label><input type="radio" name="pside" value="double"><span>Double Side</span></label>
+      </div>
+
+      <div style="display:flex; gap:10px;">
+        <div style="flex:1;">
+          <label>Pages (taadad)</label>
+          <input type="number" id="cPages" min="1" value="1">
+        </div>
+        <div style="flex:1;">
+          <label>Copies</label>
+          <input type="number" id="cCopies" min="1" value="1">
+        </div>
+      </div>
+
+      <label>Note (agar kuch khaas kehna ho)</label>
+      <input type="text" id="cNote" placeholder="Misal: urgent hai, A4 size...">
+
+      <div class="total" id="totalBox">Total: —</div>
+      <button class="btn" id="submitBtn">✅ Order Bhejein</button>
+      <div class="err hidden" id="formErr"></div>
+      <p class="note">Order bhejne ke baad aap ko ek <b>Order ID</b> milegi.<br>Counter par wohi ID batayein — print tayyar milega.<br>Payment counter par cash ya Easypaisa/JazzCash se ho jayegi.</p>
+    </div>
+
+    <div class="card hidden" id="successCard">
+      <div class="success">
+        <div style="font-size:44px;">🎉</div>
+        <h2>Order mil gaya!</h2>
+        <p style="margin-top:6px; color:#44564b;">Aap ka Order ID hai:</p>
+        <div class="oid" id="successId">KG-0000</div>
+        <p style="color:#44564b; line-height:1.6;">Ye ID yaad rakhein ya screenshot le lein.<br>Dukaan par aa kar ye ID batayein, aap ka print tayyar milega.<br><b>Khawar Graphics</b> — Near National Bank, Tibba Sultanpur<br>📞 0305 5991228</p>
+        <button class="btn secondary" onclick="location.reload()">Naya order bhejein</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SHOP DASHBOARD ============ -->
+  <div id="shopView" class="hidden">
+    <div class="card" id="pinCard">
+      <label>Shop PIN likhein</label>
+      <input type="password" id="pinInput" inputmode="numeric" placeholder="PIN">
+      <button class="btn" id="pinBtn">Dashboard Kholein</button>
+      <div class="err hidden" id="pinErr">Ghalat PIN — dobara koshish karein.</div>
+    </div>
+
+    <div id="dashMain" class="hidden">
+      <div class="card">
+        <h3 style="margin-bottom:8px;">📋 Print Orders <span id="orderCount" style="color:#0d6a3a;"></span></h3>
+        <div id="ordersList"><p class="note">Load ho raha hai...</p></div>
+        <button class="btn secondary" id="refreshBtn">🔄 Refresh</button>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom:4px;">⚙️ Rates (per page)</h3>
+        <label>Black &amp; White — Rs per page</label>
+        <input type="number" id="rateBw" min="0" placeholder="Misal: 20">
+        <label>Color — Rs per page</label>
+        <input type="number" id="rateColor" min="0" placeholder="Misal: 50">
+        <label>Dashboard PIN badlein (khali chhor dein to purana)</label>
+        <input type="text" id="newPin" placeholder="Naya PIN">
+        <button class="btn" id="saveRates">Save Karein</button>
+        <p class="note" id="rateMsg"></p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+var DB = "https://dogar-pos-default-rtdb.firebaseio.com/khawarPrint";
+var settings = { bw: 0, color: 0, pin: "1234" };
+var chosenFile = null;
+var isShop = /[?&]shop=1/.test(location.search);
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+
+function loadSettings(cb){
+  fetch(DB + "/settings.json").then(function(r){ return r.json(); }).then(function(s){
+    if (s) settings = s;
+    cb && cb();
+  }).catch(function(){ cb && cb(); });
+}
+
+/* ---------- customer ---------- */
+function calcTotal(){
+  var pages = parseInt($("cPages").value) || 0;
+  var copies = parseInt($("cCopies").value) || 0;
+  var type = document.querySelector('input[name=ptype]:checked').value;
+  var rate = type === "color" ? settings.color : settings.bw;
+  if (!rate) { $("totalBox").textContent = "Total: counter par confirm hoga"; return null; }
+  var total = pages * copies * rate;
+  $("totalBox").textContent = "Total: Rs " + total + "  (" + pages + " pages × " + copies + " copies × Rs " + rate + ")";
+  return total;
+}
+
+$("fileBox").addEventListener("click", function(){ $("cFile").click(); });
+$("cFile").addEventListener("change", function(){
+  chosenFile = this.files[0] || null;
+  if (!chosenFile) return;
+  if (chosenFile.size > 8 * 1024 * 1024) {
+    $("fileInfo").textContent = "⚠️ File 8 MB se bari hai — bara file WhatsApp (0305 5991228) par bhej dein.";
+    chosenFile = null; this.value = ""; return;
+  }
+  $("fileInfo").textContent = "✅ " + chosenFile.name + " (" + (chosenFile.size/1024).toFixed(0) + " KB)";
+  if (/\.pdf$/i.test(chosenFile.name) && window.pdfjsLib) {
+    chosenFile.arrayBuffer().then(function(buf){
+      pdfjsLib.getDocument({ data: buf }).promise.then(function(pdf){
+        $("cPages").value = pdf.numPages; calcTotal();
+      }).catch(function(){});
+    }).catch(function(){});
+  } else if (/image\//.test(chosenFile.type)) { $("cPages").value = 1; calcTotal(); }
+});
+["cPages","cCopies"].forEach(function(id){ $(id).addEventListener("input", calcTotal); });
+document.querySelectorAll('input[name=ptype]').forEach(function(r){ r.addEventListener("change", calcTotal); });
+
+function readAsBase64(file){
+  return new Promise(function(res, rej){
+    var fr = new FileReader();
+    fr.onload = function(){ res(String(fr.result).split(",")[1]); };
+    fr.onerror = rej;
+    fr.readAsDataURL(file);
+  });
+}
+
+$("submitBtn").addEventListener("click", function(){
+  var err = $("formErr"); err.classList.add("hidden");
+  var name = $("cName").value.trim(), phone = $("cPhone").value.trim();
+  if (!name || !phone) { err.textContent = "Naam aur mobile number lazmi likhein."; err.classList.remove("hidden"); return; }
+  if (!chosenFile) { err.textContent = "Pehle file select karein."; err.classList.remove("hidden"); return; }
+  var btn = $("submitBtn"); btn.disabled = true; btn.textContent = "⏳ Bhej raha hai...";
+  var oid = "KG-" + Math.floor(1000 + Math.random() * 9000);
+  var total = calcTotal();
+  var order = {
+    id: oid, name: name, phone: phone, fileName: chosenFile.name,
+    fileType: chosenFile.type || "", pages: parseInt($("cPages").value) || 1,
+    copies: parseInt($("cCopies").value) || 1,
+    ptype: document.querySelector('input[name=ptype]:checked').value,
+    pside: document.querySelector('input[name=pside]:checked').value,
+    note: $("cNote").value.trim(), total: total, status: "new",
+    ts: Date.now()
+  };
+  readAsBase64(chosenFile).then(function(b64){
+    return fetch(DB + "/files/" + oid + ".json", { method: "PUT", body: JSON.stringify({ data: b64 }) });
+  }).then(function(){
+    return fetch(DB + "/orders/" + oid + ".json", { method: "PUT", body: JSON.stringify(order) });
+  }).then(function(){
+    $("successId").textContent = oid;
+    $("orderForm").classList.add("hidden");
+    $("successCard").classList.remove("hidden");
+    window.scrollTo(0, 0);
+  }).catch(function(){
+    btn.disabled = false; btn.textContent = "✅ Order Bhejein";
+    err.textContent = "Order nahi gaya — internet check karke dobara koshish karein.";
+    err.classList.remove("hidden");
+  });
+});
+
+/* ---------- shop dashboard ---------- */
+if (isShop) {
+  $("customerView").classList.add("hidden");
+  $("shopView").classList.remove("hidden");
+}
+$("pinBtn").addEventListener("click", function(){
+  loadSettings(function(){
+    if ($("pinInput").value === String(settings.pin)) {
+      $("pinCard").classList.add("hidden");
+      $("dashMain").classList.remove("hidden");
+      $("rateBw").value = settings.bw || "";
+      $("rateColor").value = settings.color || "";
+      loadOrders();
+      setInterval(loadOrders, 15000);
+    } else { $("pinErr").classList.remove("hidden"); }
+  });
+});
+$("refreshBtn").addEventListener("click", loadOrders);
+
+function fmtTime(ts){
+  var d = new Date(ts);
+  return d.toLocaleDateString("en-GB") + " " + d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+}
+function loadOrders(){
+  fetch(DB + "/orders.json").then(function(r){ return r.json(); }).then(function(data){
+    var list = $("ordersList");
+    if (!data) { list.innerHTML = '<p class="note">Abhi koi order nahi.</p>'; $("orderCount").textContent = ""; return; }
+    var arr = Object.keys(data).map(function(k){ return data[k]; }).sort(function(a,b){ return b.ts - a.ts; });
+    var newCount = arr.filter(function(o){ return o.status === "new"; }).length;
+    $("orderCount").textContent = "— " + arr.length + " total, " + newCount + " naye";
+    list.innerHTML = arr.slice(0, 40).map(function(o){
+      var doneCls = o.status === "done" ? " done" : "";
+      var badge = o.status === "done" ? '<span class="badge done">HO GAYA</span>' : '<span class="badge">NAYA</span>';
+      return '<div class="order' + (o.status === "new" ? " new" : "") + '">' +
+        '<div class="top"><span>' + esc(o.id) + '</span>' + badge + '</div>' +
+        '<div class="meta">🕐 ' + fmtTime(o.ts) + '<br>👤 ' + esc(o.name) + ' · 📞 ' + esc(o.phone) +
+        '<br>📄 ' + esc(o.fileName) + '<br>🖨️ ' + (o.ptype === "color" ? "Color" : "Black & White") + ' · ' + (o.pside === "double" ? "Double side" : "Single side") +
+        ' · ' + o.pages + ' pages × ' + o.copies + ' copies' +
+        (o.total ? '<br>💰 Total: <b>Rs ' + o.total + '</b>' : '<br>💰 Total: counter par') +
+        (o.note ? '<br>📝 ' + esc(o.note) : '') + '</div>' +
+        '<div class="row"><button class="dl" onclick="downloadFile(\'' + o.id + '\', \'' + esc(o.fileName).replace(/'/g, "") + '\')">⬇ File Download</button>' +
+        (o.status !== "done" ? '<button class="done" onclick="markDone(\'' + o.id + '\')">✔ Ho Gaya</button>' : '') +
+        '</div></div>';
+    }).join("");
+  }).catch(function(){ $("ordersList").innerHTML = '<p class="err">Orders load nahi hue — internet check karein.</p>'; });
+}
+function downloadFile(oid, fname){
+  fetch(DB + "/files/" + oid + ".json").then(function(r){ return r.json(); }).then(function(d){
+    if (!d || !d.data) { alert("File nahi mili."); return; }
+    var bin = atob(d.data), arr = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    var url = URL.createObjectURL(new Blob([arr]));
+    var a = document.createElement("a"); a.href = url; a.download = fname || (oid + ".pdf");
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  }).catch(function(){ alert("Download fail — dobara koshish karein."); });
+}
+function markDone(oid){
+  fetch(DB + "/orders/" + oid + "/status.json", { method: "PUT", body: JSON.stringify("done") }).then(loadOrders);
+}
+$("saveRates").addEventListener("click", function(){
+  settings.bw = parseInt($("rateBw").value) || 0;
+  settings.color = parseInt($("rateColor").value) || 0;
+  if ($("newPin").value.trim()) settings.pin = $("newPin").value.trim();
+  fetch(DB + "/settings.json", { method: "PUT", body: JSON.stringify(settings) }).then(function(){
+    $("rateMsg").textContent = "✅ Save ho gaya.";
+  }).catch(function(){ $("rateMsg").textContent = "Save nahi hua — dobara koshish karein."; });
+});
+
+loadSettings(calcTotal);
+</script>
+</body>
+</html>
