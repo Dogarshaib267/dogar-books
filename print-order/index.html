@@ -47,6 +47,12 @@
   .badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #f5c542; color: #4d3a00; }
   .badge.done { background: #cfe3d4; color: #23402f; }
   .err { color: #b3261e; font-size: 14px; margin-top: 8px; text-align: center; }
+  /* dashboard web view */
+  body.shop .wrap { max-width: 1180px; }
+  .orders-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px; }
+  .orders-grid .order { margin-bottom: 0; }
+  .done-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid #e3eae5; font-size: 13px; color: #44564b; }
+  .done-row button { padding: 6px 10px; border: none; border-radius: 6px; background: #e3eae5; cursor: pointer; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -127,6 +133,13 @@
         <h3 style="margin-bottom:8px;">📋 Print Orders <span id="orderCount" style="color:#0d6a3a;"></span></h3>
         <div id="ordersList"><p class="note">Load ho raha hai...</p></div>
         <button class="btn secondary" id="refreshBtn">🔄 Refresh</button>
+        <div id="doneSection" class="hidden" style="margin-top:14px;">
+          <button class="btn secondary" id="doneToggle" style="margin-top:0;">✅ Mukammal Orders (<span id="doneCount">0</span>) — dekhne ke liye tap karein</button>
+          <div id="doneWrap" class="hidden" style="margin-top:8px;">
+            <div id="doneList"></div>
+            <button class="btn secondary" id="clearDone" style="background:#8a2f27; margin-top:10px;">🗑 Mukammal orders ki history saaf karein</button>
+          </div>
+        </div>
       </div>
       <div class="card">
         <h3 style="margin-bottom:4px;">⚙️ Rates (per page)</h3>
@@ -1395,9 +1408,12 @@ $("submitBtn").addEventListener("click", function(){
 });
 
 /* ---------- shop dashboard ---------- */
+var lastDoneIds = [];
+var doneOpen = false;
 if (isShop) {
   $("customerView").classList.add("hidden");
   $("shopView").classList.remove("hidden");
+  document.body.classList.add("shop");
 }
 $("pinBtn").addEventListener("click", function(){
   loadSettings(function(){
@@ -1420,25 +1436,57 @@ function fmtTime(ts){
 function loadOrders(){
   fetch(DB + "/orders.json").then(function(r){ return r.json(); }).then(function(data){
     var list = $("ordersList");
-    if (!data) { list.innerHTML = '<p class="note">Abhi koi order nahi.</p>'; $("orderCount").textContent = ""; return; }
+    if (!data) { list.innerHTML = '<p class="note">Abhi koi order nahi.</p>'; $("orderCount").textContent = ""; $("doneSection").classList.add("hidden"); lastDoneIds = []; return; }
     var arr = Object.keys(data).map(function(k){ return data[k]; }).sort(function(a,b){ return b.ts - a.ts; });
-    var newCount = arr.filter(function(o){ return o.status === "new"; }).length;
-    $("orderCount").textContent = "— " + arr.length + " total, " + newCount + " naye";
-    list.innerHTML = arr.slice(0, 40).map(function(o){
-      var doneCls = o.status === "done" ? " done" : "";
-      var badge = o.status === "done" ? '<span class="badge done">HO GAYA</span>' : (o.status === "manual" ? '<span class="badge">MANUAL PRINT</span>' : '<span class="badge">NAYA</span>');
-      return '<div class="order' + (o.status === "new" ? " new" : "") + '">' +
-        '<div class="top"><span>' + esc(o.id) + '</span>' + badge + '</div>' +
-        '<div class="meta">🕐 ' + fmtTime(o.ts) + '<br>📄 ' + esc(o.fileName) + (o.fileCount > 1 ? ' <b>(' + o.fileCount + ' files)</b>' : '') + '<br>🖨️ ' + (o.ptype === "color" ? "Color" : "Black & White") + ' · ' + (o.pside === "double" ? "Double side" : "Single side") +
-        ' · ' + o.pages + ' pages × ' + o.copies + ' copies' +
-        (o.total ? '<br>💰 Total: <b>Rs ' + o.total + '</b>' : '<br>💰 Total: counter par') +
-        (o.note ? '<br>📝 ' + esc(o.note) : '') + (o.agentNote ? '<br>⚠️ ' + esc(o.agentNote) : '') + '</div>' +
-        '<div class="row"><button class="dl" onclick="downloadFile(\'' + o.id + '\', \'' + esc(o.fileName).replace(/'/g, "") + '\')">⬇ File Download</button>' +
-        (o.status !== "done" ? '<button class="done" onclick="markDone(\'' + o.id + '\')">✔ Ho Gaya</button>' : '') +
-        '</div></div>';
-    }).join("");
+    var active = arr.filter(function(o){ return o.status !== "done"; });
+    var done = arr.filter(function(o){ return o.status === "done"; });
+    lastDoneIds = done.map(function(o){ return o.id; });
+    var newCount = active.filter(function(o){ return o.status === "new"; }).length;
+    $("orderCount").textContent = "— " + active.length + " baaqi, " + newCount + " naye";
+    if (!active.length) {
+      list.innerHTML = '<p class="note">✅ Abhi koi baaqi order nahi — saaray ho gaye hain.</p>';
+    } else {
+      list.innerHTML = '<div class="orders-grid">' + active.slice(0, 60).map(function(o){
+        var badge = o.status === "manual" ? '<span class="badge">MANUAL PRINT</span>' : '<span class="badge">NAYA</span>';
+        return '<div class="order' + (o.status === "new" ? " new" : "") + '">' +
+          '<div class="top"><span>' + esc(o.id) + '</span>' + badge + '</div>' +
+          '<div class="meta">🕐 ' + fmtTime(o.ts) + '<br>📄 ' + esc(o.fileName) + (o.fileCount > 1 ? ' <b>(' + o.fileCount + ' files)</b>' : '') + '<br>🖨️ ' + (o.ptype === "color" ? "Color" : "Black & White") + ' · ' + (o.pside === "double" ? "Double side" : "Single side") +
+          ' · ' + o.pages + ' pages × ' + o.copies + ' copies' +
+          (o.total ? '<br>💰 Total: <b>Rs ' + o.total + '</b>' : '<br>💰 Total: counter par') +
+          (o.note ? '<br>📝 ' + esc(o.note) : '') + (o.agentNote ? '<br>⚠️ ' + esc(o.agentNote) : '') + '</div>' +
+          '<div class="row"><button class="dl" onclick="downloadFile(\'' + o.id + '\', \'' + esc(o.fileName).replace(/'/g, "") + '\')">⬇ File Download</button>' +
+          '<button class="done" onclick="markDone(\'' + o.id + '\')">✔ Ho Gaya</button>' +
+          '</div></div>';
+      }).join("") + '</div>';
+    }
+    // Mukammal orders — band (fold) hisse mein
+    if (done.length) {
+      $("doneSection").classList.remove("hidden");
+      $("doneCount").textContent = done.length;
+      $("doneWrap").classList.toggle("hidden", !doneOpen);
+      $("doneList").innerHTML = done.slice(0, 100).map(function(o){
+        return '<div class="done-row"><span><b>' + esc(o.id) + '</b> · ' + fmtTime(o.ts) + ' · ' + esc(o.fileName) + ' · ' + o.pages + ' pages × ' + o.copies + (o.total ? ' · Rs ' + o.total : '') + '</span>' +
+          '<button onclick="downloadFile(\'' + o.id + '\', \'' + esc(o.fileName).replace(/'/g, "") + '\')">⬇</button></div>';
+      }).join("");
+    } else {
+      $("doneSection").classList.add("hidden");
+    }
   }).catch(function(){ $("ordersList").innerHTML = '<p class="err">Orders load nahi hue — internet check karein.</p>'; });
 }
+$("doneToggle").addEventListener("click", function(){
+  doneOpen = !doneOpen;
+  $("doneWrap").classList.toggle("hidden", !doneOpen);
+});
+$("clearDone").addEventListener("click", function(){
+  if (!lastDoneIds.length) return;
+  if (!confirm("Saaray mukammal (" + lastDoneIds.length + ") orders ki history saaf ho jayegi — files bhi delete ho jayengi. Pakka?")) return;
+  var jobs = [];
+  lastDoneIds.forEach(function(oid){
+    jobs.push(fetch(DB + "/orders/" + oid + ".json", { method: "DELETE" }));
+    jobs.push(fetch(DB + "/files/" + oid + ".json", { method: "DELETE" }));
+  });
+  Promise.all(jobs).then(function(){ doneOpen = false; loadOrders(); }).catch(function(){ alert("Kuch delete nahi hua — dobara koshish karein."); });
+});
 function saveBlob(b64, fname){
   var bin = atob(b64), arr = new Uint8Array(bin.length);
   for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
