@@ -74,7 +74,7 @@
       <label>Files select karein (ek ya zyada — PDF, photo ya document)</label>
       <div class="filebox" id="fileBox">
         <b>📄 Files chunne ke liye yahan tap karein</b>
-        <small id="fileInfo">Ek sath kai files bhi select ho sakti hain — kul size zyada se zyada 8 MB<br>🪪 ID card ki terhi photo khud seedhi aur saaf ho jayegi</small>
+        <small id="fileInfo">Ek sath kai files bhi select ho sakti hain — kul size zyada se zyada 8 MB<br>🪪 ID card ki photo par konay ayenge — theek karke seedha scan banega</small>
       </div>
       <input type="file" id="cFile" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple class="hidden">
 
@@ -143,6 +143,25 @@
         <button class="btn" id="saveRates">Save Karein</button>
         <p class="note" id="rateMsg"></p>
       </div>
+    </div>
+  </div>
+
+  <!-- ============ SCAN EDITOR (card ke konay) ============ -->
+  <div id="scanModal" class="hidden" style="position:fixed; inset:0; background:rgba(8,22,14,.97); z-index:60; overflow:auto; padding:16px 12px;">
+    <div style="max-width:640px; margin:0 auto;">
+      <h3 style="color:#fff; text-align:center; font-size:20px;">🪪 Card ke konay set karein</h3>
+      <p style="color:#cfe3d4; text-align:center; font-size:13px; margin:6px 0 10px; line-height:1.6;">Narangi nuqton ko ungli se ghaseet kar card ke chaaron konon par le jayein, phir <b>Seedha Scan</b> dabayein — sirf card wala hissa seedha hokar jayega.</p>
+      <div style="position:relative; width:100%;">
+        <img id="scanImg" alt="photo" style="width:100%; display:block; border-radius:8px;">
+        <svg id="scanOverlay" style="position:absolute; inset:0; width:100%; height:100%; touch-action:none;"></svg>
+      </div>
+      <p id="scanNote" style="color:#ffe9a8; text-align:center; font-size:13px; min-height:18px; margin-top:8px;"></p>
+      <div style="display:flex; gap:8px;">
+        <button class="btn secondary" id="scanAuto" style="flex:1; margin-top:6px;">🔄 Auto dobara</button>
+        <button class="btn secondary" id="scanFull" style="flex:1; margin-top:6px;">Poora frame</button>
+      </div>
+      <button class="btn" id="scanDo">✔ Seedha Scan banayein</button>
+      <button class="btn secondary" id="scanSkip">Asli photo hi rehne dein</button>
     </div>
   </div>
 
@@ -1212,60 +1231,184 @@
 
         /* ================= pipeline ================= */
 
-/* ===== Auto-Scan wrapper: photo mile to card seedha + saaf karke wapas do ===== */
+/* ===== Auto-Scan editor: photo par card ke konay — customer theek karke scan banata hai ===== */
 var scanningNow = false;
 var scannedIdx = {};
-function quadOK(corners, W, H) {
-  /* Hifazati check: quad poora card hi ho — photo ka kam az kam 18% hissa,
-     aur lambai/chairai ka tanasub card jaisa (1.25–2.0). Warna asli photo
-     hi rehne do — galat crop seedha karne se bura hai. */
-  var a = 0, i, p, q;
-  for (i = 0; i < 4; i++) { p = corners[i]; q = corners[(i + 1) % 4]; a += p.x * q.y - q.x * p.y; }
-  var frac = Math.abs(a / 2) / (W * H);
-  if (frac < 0.18) return false;
-  function dd(p1, p2) { var dx = p1.x - p2.x, dy = p1.y - p2.y; return Math.sqrt(dx * dx + dy * dy); }
-  var wAvg = (dd(corners[0], corners[1]) + dd(corners[3], corners[2])) / 2;
-  var hAvg = (dd(corners[0], corners[3]) + dd(corners[1], corners[2])) / 2;
-  var ratio = Math.max(wAvg, hAvg) / Math.max(1, Math.min(wAvg, hAvg));
-  return ratio >= 1.25 && ratio <= 2.0;
-}
-function autoScanPhoto(file) {
-  return new Promise(function (resolve) {
-    var url = URL.createObjectURL(file);
-    var img = new Image();
-    img.onload = function () {
-      setTimeout(function () {
-        try {
-          var det = detectDocumentCorners(img, 'cnic');
-          if (!det || !det.corners || (det.score || 0) < 0.5 || !quadOK(det.corners, img.naturalWidth, img.naturalHeight)) { URL.revokeObjectURL(url); resolve(null); return; }
-          var work = warpImage(img, det.corners);
-          if (!work) { URL.revokeObjectURL(url); resolve(null); return; }
-          work = normalizeShadow(work, 0.88);
-          work = autoLevels(work);
-          work = filterCopy(work, 'saturate(1.28) contrast(1.08) brightness(1.01)');
-          if (work.height > work.width) {
-            var rot = makeCanvas(work.height, work.width);
-            var rctx = rot.getContext('2d');
-            rctx.translate(rot.width / 2, rot.height / 2);
-            rctx.rotate(-Math.PI / 2);
-            rctx.drawImage(work, -work.width / 2, -work.height / 2);
-            work = rot;
-          }
-          if (work.toBlob) {
-            work.toBlob(function (blob) {
-              URL.revokeObjectURL(url);
-              if (!blob) { resolve(null); return; }
-              resolve(new File([blob], file.name.replace(/\.[^.]+$/, '') + '-scan.jpg', { type: 'image/jpeg' }));
-            }, 'image/jpeg', 0.92);
-          } else { URL.revokeObjectURL(url); resolve(null); }
-        } catch (e) { URL.revokeObjectURL(url); resolve(null); }
-      }, 30);
-    };
-    img.onerror = function () { URL.revokeObjectURL(url); resolve(null); };
-    img.src = url;
-  });
-}
+var scanQueue = [], scanCur = null;
+var scanPoly = null, scanHandles = [], scanHits = [], scanDrag = -1;
+var SVGNS = 'http://www.w3.org/2000/svg';
 
+function defaultScanCorners(w, h) {
+  var mx = w * 0.03, my = h * 0.03;
+  return [{ x: mx, y: my }, { x: w - mx, y: my }, { x: w - mx, y: h - my }, { x: mx, y: h - my }];
+}
+function scanChosenPhotos() {
+  scanQueue = [];
+  chosenFiles.forEach(function (f, i) { if (/image\//.test(f.type)) scanQueue.push(i); });
+  if (!scanQueue.length) return;
+  scanningNow = true;
+  nextScanPhoto();
+}
+function finishScan() {
+  scanningNow = false;
+  $("scanModal").classList.add("hidden");
+  var n = Object.keys(scannedIdx).length;
+  renderFileInfo(n ? "🪪 " + n + " photo seedhi scan ho gayi hai — print bilkul saaf ayega." : "");
+}
+function closeScanCur() {
+  if (scanCur) { URL.revokeObjectURL(scanCur.url); scanCur = null; }
+}
+function nextScanPhoto() {
+  if (!scanQueue.length) { finishScan(); return; }
+  var idx = scanQueue.shift();
+  var file = chosenFiles[idx];
+  var url = URL.createObjectURL(file);
+  var img = new Image();
+  img.onload = function () {
+    setTimeout(function () {
+      var corners = null, note = "";
+      try {
+        var det = detectDocumentCorners(img, 'cnic');
+        if (det && det.corners) { corners = det.corners; note = "Auto ne card pakra hai — narangi line card ke kinare par hai, check kar lein. Ghalat ho to nuqtay ghaseet lein."; }
+      } catch (e) {}
+      if (!corners) { corners = defaultScanCorners(img.naturalWidth, img.naturalHeight); note = "Auto ko card nahi mila — nuqton ko ghaseet kar card ke konon par le jayein."; }
+      scanCur = { idx: idx, img: img, url: url, corners: corners, name: file.name };
+      openScanEditor(note);
+    }, 30);
+  };
+  img.onerror = function () { URL.revokeObjectURL(url); nextScanPhoto(); };
+  img.src = url;
+}
+function openScanEditor(note) {
+  $("scanImg").src = scanCur.url;
+  $("scanNote").textContent = note;
+  buildScanOverlay();
+  $("scanModal").classList.remove("hidden");
+  window.scrollTo(0, 0);
+}
+function buildScanOverlay() {
+  var ov = $("scanOverlay"), img = scanCur.img;
+  ov.setAttribute('viewBox', '0 0 ' + img.naturalWidth + ' ' + img.naturalHeight);
+  ov.innerHTML = '';
+  var unit = Math.max(img.naturalWidth, img.naturalHeight);
+  scanPoly = document.createElementNS(SVGNS, 'polygon');
+  scanPoly.setAttribute('fill', 'rgba(255,159,28,0.13)');
+  scanPoly.setAttribute('stroke', '#ff9f1c');
+  scanPoly.setAttribute('stroke-width', unit * 0.005);
+  scanPoly.setAttribute('stroke-linejoin', 'round');
+  scanPoly.setAttribute('pointer-events', 'none');
+  ov.appendChild(scanPoly);
+  scanHandles = []; scanHits = [];
+  for (var i = 0; i < 4; i++) {
+    var ring = document.createElementNS(SVGNS, 'circle');
+    ring.setAttribute('r', unit * 0.032); ring.setAttribute('fill', 'none');
+    ring.setAttribute('stroke', 'rgba(255,159,28,0.55)'); ring.setAttribute('stroke-width', unit * 0.004);
+    ring.setAttribute('pointer-events', 'none');
+    var dot = document.createElementNS(SVGNS, 'circle');
+    dot.setAttribute('r', unit * 0.017); dot.setAttribute('fill', '#ff9f1c');
+    dot.setAttribute('stroke', '#ffffff'); dot.setAttribute('stroke-width', unit * 0.004);
+    dot.setAttribute('pointer-events', 'none');
+    var hit = document.createElementNS(SVGNS, 'circle');
+    hit.setAttribute('r', unit * 0.06); hit.setAttribute('fill', 'rgba(0,0,0,0)');
+    hit.setAttribute('data-i', i);
+    ov.appendChild(ring); ov.appendChild(dot); ov.appendChild(hit);
+    scanHandles.push({ dot: dot, ring: ring }); scanHits.push(hit);
+  }
+  drawScanOverlay();
+}
+function drawScanOverlay() {
+  if (!scanPoly || !scanCur) return;
+  scanPoly.setAttribute('points', scanCur.corners.map(function (p) { return p.x + ',' + p.y; }).join(' '));
+  for (var i = 0; i < 4; i++) {
+    var p = scanCur.corners[i];
+    scanHandles[i].dot.setAttribute('cx', p.x); scanHandles[i].dot.setAttribute('cy', p.y);
+    scanHandles[i].ring.setAttribute('cx', p.x); scanHandles[i].ring.setAttribute('cy', p.y);
+    scanHits[i].setAttribute('cx', p.x); scanHits[i].setAttribute('cy', p.y);
+  }
+}
+function scanSvgPoint(evt) {
+  var ov = $("scanOverlay");
+  var pt = ov.createSVGPoint();
+  pt.x = evt.clientX; pt.y = evt.clientY;
+  var m = ov.getScreenCTM();
+  if (!m) return { x: 0, y: 0 };
+  var p = pt.matrixTransform(m.inverse());
+  return { x: p.x, y: p.y };
+}
+$("scanOverlay").addEventListener('pointerdown', function (e) {
+  var i = parseInt(e.target.getAttribute('data-i'), 10);
+  if (isNaN(i)) return;
+  scanDrag = i;
+  try { $("scanOverlay").setPointerCapture(e.pointerId); } catch (err) {}
+  moveScanHandle(e);
+  e.preventDefault();
+});
+$("scanOverlay").addEventListener('pointermove', function (e) {
+  if (scanDrag < 0) return;
+  moveScanHandle(e);
+});
+function endScanDrag() { scanDrag = -1; }
+$("scanOverlay").addEventListener('pointerup', endScanDrag);
+$("scanOverlay").addEventListener('pointercancel', endScanDrag);
+function moveScanHandle(e) {
+  if (!scanCur) return;
+  var p = scanSvgPoint(e);
+  scanCur.corners[scanDrag] = {
+    x: clamp(p.x, 0, scanCur.img.naturalWidth - 1),
+    y: clamp(p.y, 0, scanCur.img.naturalHeight - 1)
+  };
+  drawScanOverlay();
+}
+$("scanAuto").addEventListener('click', function () {
+  if (!scanCur) return;
+  try {
+    var det = detectDocumentCorners(scanCur.img, 'cnic');
+    if (det && det.corners) { scanCur.corners = det.corners; $("scanNote").textContent = "Auto dobara lag gaya hai — line kinare par check kar lein."; }
+    else { $("scanNote").textContent = "Auto ko card nahi mila — nuqtay haath se set karein."; }
+  } catch (e) { $("scanNote").textContent = "Auto nahi chala — nuqtay haath se set karein."; }
+  drawScanOverlay();
+});
+$("scanFull").addEventListener('click', function () {
+  if (!scanCur) return;
+  scanCur.corners = defaultScanCorners(scanCur.img.naturalWidth, scanCur.img.naturalHeight);
+  drawScanOverlay();
+});
+$("scanSkip").addEventListener('click', function () {
+  closeScanCur();
+  nextScanPhoto();
+});
+$("scanDo").addEventListener('click', function () {
+  if (!scanCur) return;
+  var idx = scanCur.idx, nm = scanCur.name, done = false;
+  try {
+    var work = warpImage(scanCur.img, scanCur.corners);
+    if (work) {
+      work = normalizeShadow(work, 0.88);
+      work = autoLevels(work);
+      work = filterCopy(work, 'saturate(1.28) contrast(1.08) brightness(1.01)');
+      if (work.height > work.width) {
+        var rot = makeCanvas(work.height, work.width);
+        var rctx = rot.getContext('2d');
+        rctx.translate(rot.width / 2, rot.height / 2);
+        rctx.rotate(-Math.PI / 2);
+        rctx.drawImage(work, -work.width / 2, -work.height / 2);
+        work = rot;
+      }
+      if (work.toBlob) {
+        done = true;
+        work.toBlob(function (blob) {
+          if (blob) {
+            chosenFiles[idx] = new File([blob], nm.replace(/\.[^.]+$/, '') + '-scan.jpg', { type: 'image/jpeg' });
+            scannedIdx[idx] = true;
+          }
+          closeScanCur();
+          nextScanPhoto();
+        }, 'image/jpeg', 0.92);
+      }
+    }
+  } catch (e) {}
+  if (!done) { closeScanCur(); nextScanPhoto(); }
+});
 </script>
 <script>
 var DB = "https://dogar-pos-default-rtdb.firebaseio.com/khawarPrint";
@@ -1300,26 +1443,6 @@ function renderFileInfo(extra){
   $("fileInfo").innerHTML = "✅ " + chosenFiles.length + " file(s) select ho gayi — kul " + (totalSize/1024).toFixed(0) + " KB<br>" +
     chosenFiles.map(function(f, i){ return (scannedIdx[i] ? "🪪 " : "📄 ") + esc(f.name) + (scannedIdx[i] ? " (seedha scan)" : ""); }).join("<br>") +
     (extra ? "<br>" + extra : "");
-}
-function scanChosenPhotos(){
-  var photoIdx = [];
-  chosenFiles.forEach(function(f, i){ if (/image\//.test(f.type)) photoIdx.push(i); });
-  if (!photoIdx.length) return;
-  scanningNow = true;
-  renderFileInfo("🔄 Photo seedhi ki ja rahi hai — zara intezar karein...");
-  var chain = Promise.resolve();
-  photoIdx.forEach(function(i){
-    chain = chain.then(function(){
-      return autoScanPhoto(chosenFiles[i]).then(function(nf){
-        if (nf) { chosenFiles[i] = nf; scannedIdx[i] = true; }
-      });
-    });
-  });
-  chain.then(function(){
-    scanningNow = false;
-    var n = Object.keys(scannedIdx).length;
-    renderFileInfo(n ? "🪪 " + n + " photo ka card seedha kar diya gaya hai — print bilkul saaf ayega." : "");
-  });
 }
 
 $("fileBox").addEventListener("click", function(){ $("cFile").click(); });
@@ -1481,14 +1604,68 @@ function saveBlob(b64, fname){
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
 }
+function base64ToBytes(b64){
+  var bin = atob(b64), arr = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return arr;
+}
+var CRC_TABLE = null;
+function crc32(bytes){
+  if (!CRC_TABLE) {
+    CRC_TABLE = [];
+    for (var n = 0; n < 256; n++) {
+      var c = n;
+      for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      CRC_TABLE[n] = c >>> 0;
+    }
+  }
+  var crc = 0xFFFFFFFF;
+  for (var i = 0; i < bytes.length; i++) crc = CRC_TABLE[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+function makeZipBlob(files){
+  // files: [{name, bytes}] — STORE (bina compression) zip, har extractor mein khulta hai
+  var enc = window.TextEncoder ? new TextEncoder() : null;
+  function nameBytes(s){ if (enc) return enc.encode(s); var u = unescape(encodeURIComponent(s)), a = new Uint8Array(u.length); for (var i = 0; i < u.length; i++) a[i] = u.charCodeAt(i); return a; }
+  var now = new Date();
+  var dosTime = ((now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1)) & 0xFFFF;
+  var dosDate = (((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate()) & 0xFFFF;
+  var parts = [], central = [], offset = 0;
+  files.forEach(function(f){
+    var nb = nameBytes(f.name);
+    var crc = crc32(f.bytes);
+    var lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true);
+    lh.setUint16(8, 0, true); lh.setUint16(10, dosTime, true); lh.setUint16(12, dosDate, true);
+    lh.setUint32(14, crc, true); lh.setUint32(18, f.bytes.length, true); lh.setUint32(22, f.bytes.length, true);
+    lh.setUint16(26, nb.length, true); lh.setUint16(28, 0, true);
+    parts.push(new Uint8Array(lh.buffer), nb, f.bytes);
+    var ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true);
+    ch.setUint16(10, 0, true); ch.setUint16(12, dosTime, true); ch.setUint16(14, dosDate, true);
+    ch.setUint32(16, crc, true); ch.setUint32(20, f.bytes.length, true); ch.setUint32(24, f.bytes.length, true);
+    ch.setUint16(28, nb.length, true); ch.setUint32(42, offset, true);
+    central.push(new Uint8Array(ch.buffer), nb);
+    offset += 30 + nb.length + f.bytes.length;
+  });
+  var cenSize = central.reduce(function(s, p){ return s + p.length; }, 0);
+  var end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true);
+  end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+  end.setUint32(12, cenSize, true); end.setUint32(16, offset, true);
+  return new Blob(parts.concat(central, [new Uint8Array(end.buffer)]), { type: "application/zip" });
+}
 function downloadFile(oid, fname){
   fetch(DB + "/files/" + oid + ".json").then(function(r){ return r.json(); }).then(function(d){
     if (!d) { alert("File nahi mili."); return; }
     if (d.files && d.files.length) {
-      // Kai files hain — ek ek karke download karein
-      d.files.forEach(function(f, i){
-        setTimeout(function(){ saveBlob(f.data, f.name || (oid + "-" + (i+1))); }, i * 900);
-      });
+      if (d.files.length === 1) { saveBlob(d.files[0].data, d.files[0].name || (oid + ".pdf")); return; }
+      // Kai files — ek ZIP bana kar dein
+      var zip = makeZipBlob(d.files.map(function(f, i){ return { name: f.name || (oid + "-" + (i + 1)), bytes: base64ToBytes(f.data) }; }));
+      var url = URL.createObjectURL(zip);
+      var a = document.createElement("a"); a.href = url; a.download = oid + "-files.zip";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
       return;
     }
     if (!d.data) { alert("File nahi mili."); return; }
