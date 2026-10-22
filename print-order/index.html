@@ -7,10 +7,12 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f1; color: #1c2b21; }
-  .head { background: linear-gradient(135deg, #0a4a2a, #0d6a3a); color: #fff; padding: 22px 16px 18px; text-align: center; }
-  .head h1 { font-size: 26px; letter-spacing: .5px; }
-  .head .urdu { font-size: 20px; margin-top: 2px; color: #ffe9a8; }
-  .head p { font-size: 13px; opacity: .9; margin-top: 6px; }
+  .head { background: linear-gradient(135deg, #083d22, #0d6a3a 60%, #128a4a); color: #fff; padding: 28px 16px 22px; text-align: center; }
+  .head h1 { font-size: 30px; letter-spacing: 1px; text-shadow: 0 2px 8px rgba(0,0,0,.25); }
+  .head .urdu { font-size: 22px; margin-top: 2px; color: #ffe9a8; }
+  .head p { font-size: 13px; opacity: .92; margin-top: 6px; }
+  .chips { margin-top: 14px; display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+  .chips span { background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.35); padding: 5px 11px; border-radius: 20px; font-size: 12px; }
   .wrap { max-width: 560px; margin: 0 auto; padding: 16px; }
   .card { background: #fff; border-radius: 14px; padding: 18px; box-shadow: 0 2px 10px rgba(0,0,0,.08); margin-bottom: 14px; }
   label { display: block; font-weight: 600; font-size: 14px; margin: 12px 0 6px; }
@@ -19,8 +21,8 @@
     width: 100%; padding: 12px; border: 1.5px solid #cfd8d2; border-radius: 10px; font-size: 16px; background: #fbfdfc;
   }
   input:focus { outline: none; border-color: #0d6a3a; }
-  .filebox { border: 2px dashed #0d6a3a; border-radius: 12px; padding: 18px; text-align: center; background: #f2f9f4; cursor: pointer; }
-  .filebox b { color: #0a4a2a; font-size: 16px; }
+  .filebox { border: 2.5px dashed #0d6a3a; border-radius: 14px; padding: 28px 18px; text-align: center; background: linear-gradient(180deg, #eef8f1, #f7fcf8); cursor: pointer; }
+  .filebox b { color: #0a4a2a; font-size: 18px; }
   .filebox small { display: block; color: #5a6b60; margin-top: 4px; }
   .radio-row { display: flex; gap: 10px; }
   .radio-row label { flex: 1; margin: 0; }
@@ -28,7 +30,7 @@
   .radio-row span { display: block; text-align: center; padding: 12px 6px; border: 1.5px solid #cfd8d2; border-radius: 10px; font-size: 15px; cursor: pointer; background: #fbfdfc; }
   .radio-row input:checked + span { background: #0d6a3a; color: #fff; border-color: #0d6a3a; font-weight: 700; }
   .total { background: #fff8e1; border: 1.5px solid #f5c542; border-radius: 10px; padding: 12px; text-align: center; font-size: 17px; font-weight: 700; color: #6b5200; margin-top: 14px; }
-  .btn { display: block; width: 100%; background: #0d6a3a; color: #fff; border: none; padding: 15px; font-size: 18px; font-weight: 700; border-radius: 12px; cursor: pointer; margin-top: 14px; }
+  .btn { display: block; width: 100%; background: linear-gradient(135deg, #0d6a3a, #0a4a2a); color: #fff; border: none; padding: 16px; font-size: 19px; font-weight: 700; border-radius: 12px; cursor: pointer; margin-top: 14px; box-shadow: 0 4px 14px rgba(13,106,58,.35); letter-spacing: .3px; }
   .btn:disabled { background: #9db8a8; }
   .btn.secondary { background: #34503f; font-size: 15px; padding: 11px; }
   .note { font-size: 13px; color: #5a6b60; text-align: center; margin-top: 10px; line-height: 1.5; }
@@ -61,6 +63,7 @@
   <h1>KHAWAR GRAPHICS</h1>
   <div class="urdu">آن لائن پرنٹ آرڈر</div>
   <p>File bhejein, print tayyar milega — Near National Bank, Tibba Sultanpur · 0305 5991228</p>
+  <div class="chips"><span>📄 PDF / Photo upload</span><span>🪪 ID card khud seedha</span><span>⚡ Order ID foran</span></div>
 </div>
 
 <div class="wrap">
@@ -74,18 +77,6 @@
         <small id="fileInfo">Ek sath kai files bhi select ho sakti hain — kul size zyada se zyada 8 MB<br>🪪 ID card ki terhi photo khud seedhi aur saaf ho jayegi</small>
       </div>
       <input type="file" id="cFile" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple class="hidden">
-
-      <label>Print ki qisam</label>
-      <div class="radio-row">
-        <label><input type="radio" name="ptype" value="bw" checked><span>Black &amp; White</span></label>
-        <label><input type="radio" name="ptype" value="color"><span>Color</span></label>
-      </div>
-
-      <label>Side</label>
-      <div class="radio-row">
-        <label><input type="radio" name="pside" value="single" checked><span>Single Side</span></label>
-        <label><input type="radio" name="pside" value="double"><span>Double Side</span></label>
-      </div>
 
       <div style="display:flex; gap:10px;">
         <div style="flex:1;">
@@ -102,7 +93,7 @@
       <input type="text" id="cNote" placeholder="Misal: urgent hai, A4 size...">
 
       <div class="total" id="totalBox">Total: —</div>
-      <button class="btn" id="submitBtn">✅ Order Bhejein</button>
+      <button class="btn" id="submitBtn">🖨️ Print Kro</button>
       <div class="err hidden" id="formErr"></div>
       <p class="note">Order bhejne ke baad aap ko ek <b>Order ID</b> milegi.<br>Counter par wohi ID batayein — print tayyar milega.<br>Payment counter par cash ya Easypaisa/JazzCash se ho jayegi.</p>
     </div>
@@ -143,7 +134,7 @@
       </div>
       <div class="card">
         <h3 style="margin-bottom:4px;">⚙️ Rates (per page)</h3>
-        <label>Black &amp; White — Rs per page</label>
+        <label>Print rate — Rs per page</label>
         <input type="number" id="rateBw" min="0" placeholder="Misal: 20">
         <label>Color — Rs per page</label>
         <input type="number" id="rateColor" min="0" placeholder="Misal: 50">
@@ -1296,8 +1287,7 @@ function loadSettings(cb){
 function calcTotal(){
   var pages = parseInt($("cPages").value) || 0;
   var copies = parseInt($("cCopies").value) || 0;
-  var type = document.querySelector('input[name=ptype]:checked').value;
-  var rate = type === "color" ? settings.color : settings.bw;
+  var rate = settings.bw || settings.color || 0;
   if (!rate) { $("totalBox").textContent = "Total: counter par confirm hoga"; return null; }
   var total = pages * copies * rate;
   $("totalBox").textContent = "Total: Rs " + total + "  (" + pages + " pages × " + copies + " copies × Rs " + rate + ")";
@@ -1360,7 +1350,6 @@ $("cFile").addEventListener("change", function(){
   });
 });
 ["cPages","cCopies"].forEach(function(id){ $(id).addEventListener("input", calcTotal); });
-document.querySelectorAll('input[name=ptype]').forEach(function(r){ r.addEventListener("change", calcTotal); });
 
 function readAsBase64(file){
   return new Promise(function(res, rej){
@@ -1374,7 +1363,7 @@ function readAsBase64(file){
 $("submitBtn").addEventListener("click", function(){
   var err = $("formErr"); err.classList.add("hidden");
   if (!chosenFiles.length) { err.textContent = "Pehle files select karein."; err.classList.remove("hidden"); return; }
-  if (scanningNow) { err.textContent = "Photo scan ho rahi hai — zara intezar karein, phir Order Bhejein dabayein."; err.classList.remove("hidden"); return; }
+  if (scanningNow) { err.textContent = "Photo scan ho rahi hai — zara intezar karein, phir Print Kro dabayein."; err.classList.remove("hidden"); return; }
   var btn = $("submitBtn"); btn.disabled = true; btn.textContent = "⏳ Bhej raha hai...";
   var oid = "KG-" + Math.floor(1000 + Math.random() * 9000);
   var total = calcTotal();
@@ -1384,8 +1373,6 @@ $("submitBtn").addEventListener("click", function(){
     fileName: names.join(", "), fileCount: chosenFiles.length,
     fileType: chosenFiles[0].type || "", pages: parseInt($("cPages").value) || 1,
     copies: parseInt($("cCopies").value) || 1,
-    ptype: document.querySelector('input[name=ptype]:checked').value,
-    pside: document.querySelector('input[name=pside]:checked').value,
     note: $("cNote").value.trim(), total: total, status: "new",
     ts: Date.now()
   };
@@ -1401,7 +1388,7 @@ $("submitBtn").addEventListener("click", function(){
     $("successCard").classList.remove("hidden");
     window.scrollTo(0, 0);
   }).catch(function(){
-    btn.disabled = false; btn.textContent = "✅ Order Bhejein";
+    btn.disabled = false; btn.textContent = "🖨️ Print Kro";
     err.textContent = "Order nahi gaya — internet check karke dobara koshish karein.";
     err.classList.remove("hidden");
   });
@@ -1450,8 +1437,7 @@ function loadOrders(){
         var badge = o.status === "manual" ? '<span class="badge">MANUAL PRINT</span>' : '<span class="badge">NAYA</span>';
         return '<div class="order' + (o.status === "new" ? " new" : "") + '">' +
           '<div class="top"><span>' + esc(o.id) + '</span>' + badge + '</div>' +
-          '<div class="meta">🕐 ' + fmtTime(o.ts) + '<br>📄 ' + esc(o.fileName) + (o.fileCount > 1 ? ' <b>(' + o.fileCount + ' files)</b>' : '') + '<br>🖨️ ' + (o.ptype === "color" ? "Color" : "Black & White") + ' · ' + (o.pside === "double" ? "Double side" : "Single side") +
-          ' · ' + o.pages + ' pages × ' + o.copies + ' copies' +
+          '<div class="meta">🕐 ' + fmtTime(o.ts) + '<br>📄 ' + esc(o.fileName) + (o.fileCount > 1 ? ' <b>(' + o.fileCount + ' files)</b>' : '') + '<br>🖨️ ' + (o.ptype ? ((o.ptype === "color" ? "Color" : "Black & White") + (o.pside ? ' · ' + (o.pside === "double" ? "Double side" : "Single Side") : '') + ' · ') : '') + o.pages + ' pages × ' + o.copies + ' copies' +
           (o.total ? '<br>💰 Total: <b>Rs ' + o.total + '</b>' : '<br>💰 Total: counter par') +
           (o.note ? '<br>📝 ' + esc(o.note) : '') + (o.agentNote ? '<br>⚠️ ' + esc(o.agentNote) : '') + '</div>' +
           '<div class="row"><button class="dl" onclick="downloadFile(\'' + o.id + '\', \'' + esc(o.fileName).replace(/'/g, "") + '\')">⬇ File Download</button>' +
