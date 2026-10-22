@@ -1211,6 +1211,20 @@
 /* ===== Auto-Scan wrapper: photo mile to card seedha + saaf karke wapas do ===== */
 var scanningNow = false;
 var scannedIdx = {};
+function quadOK(corners, W, H) {
+  /* Hifazati check: quad poora card hi ho — photo ka kam az kam 18% hissa,
+     aur lambai/chairai ka tanasub card jaisa (1.25–2.0). Warna asli photo
+     hi rehne do — galat crop seedha karne se bura hai. */
+  var a = 0, i, p, q;
+  for (i = 0; i < 4; i++) { p = corners[i]; q = corners[(i + 1) % 4]; a += p.x * q.y - q.x * p.y; }
+  var frac = Math.abs(a / 2) / (W * H);
+  if (frac < 0.18) return false;
+  function dd(p1, p2) { var dx = p1.x - p2.x, dy = p1.y - p2.y; return Math.sqrt(dx * dx + dy * dy); }
+  var wAvg = (dd(corners[0], corners[1]) + dd(corners[3], corners[2])) / 2;
+  var hAvg = (dd(corners[0], corners[3]) + dd(corners[1], corners[2])) / 2;
+  var ratio = Math.max(wAvg, hAvg) / Math.max(1, Math.min(wAvg, hAvg));
+  return ratio >= 1.25 && ratio <= 2.0;
+}
 function autoScanPhoto(file) {
   return new Promise(function (resolve) {
     var url = URL.createObjectURL(file);
@@ -1219,7 +1233,7 @@ function autoScanPhoto(file) {
       setTimeout(function () {
         try {
           var det = detectDocumentCorners(img, 'cnic');
-          if (!det || !det.corners || (det.score || 0) < 0.32) { URL.revokeObjectURL(url); resolve(null); return; }
+          if (!det || !det.corners || (det.score || 0) < 0.5 || !quadOK(det.corners, img.naturalWidth, img.naturalHeight)) { URL.revokeObjectURL(url); resolve(null); return; }
           var work = warpImage(img, det.corners);
           if (!work) { URL.revokeObjectURL(url); resolve(null); return; }
           work = normalizeShadow(work, 0.88);
