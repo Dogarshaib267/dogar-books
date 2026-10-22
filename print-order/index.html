@@ -49,6 +49,30 @@
   .badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #f5c542; color: #4d3a00; }
   .badge.done { background: #cfe3d4; color: #23402f; }
   .err { color: #b3261e; font-size: 14px; margin-top: 8px; text-align: center; }
+  /* mobile view theek */
+  html, body { overflow-x: hidden; }
+  input { min-width: 0; }
+  #fileInfo { overflow-wrap: anywhere; word-break: break-word; }
+  .filebox small { overflow-wrap: anywhere; }
+  @media (max-width: 480px) {
+    .head { padding: 20px 12px 16px; }
+    .head h1 { font-size: 24px; }
+    .head .urdu { font-size: 19px; }
+    .head p { font-size: 12px; }
+    .chips { margin-top: 10px; }
+    .chips span { font-size: 11px; padding: 4px 8px; }
+    .wrap { padding: 10px; }
+    .card { padding: 14px; border-radius: 12px; }
+    .filebox { padding: 20px 10px; }
+    .filebox b { font-size: 16px; }
+    label { font-size: 13px; }
+    .total { font-size: 15px; padding: 10px; }
+    .btn { font-size: 17px; padding: 14px; }
+    .success .oid { font-size: 28px; }
+    #scanModal { padding: 10px 8px !important; }
+    #scanModal h3 { font-size: 17px !important; }
+    #scanModal .btn { font-size: 15px; padding: 12px; }
+  }
   /* dashboard web view */
   body.shop .wrap { max-width: 1180px; }
   .orders-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px; }
