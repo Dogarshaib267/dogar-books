@@ -65,7 +65,7 @@
       <label>Files select karein (ek ya zyada — PDF, photo ya document)</label>
       <div class="filebox" id="fileBox">
         <b>📄 Files chunne ke liye yahan tap karein</b>
-        <small id="fileInfo">Ek sath kai files bhi select ho sakti hain — kul size zyada se zyada 8 MB</small>
+        <small id="fileInfo">Ek sath kai files bhi select ho sakti hain — kul size zyada se zyada 8 MB<br>🪪 ID card ki terhi photo khud seedhi aur saaf ho jayegi</small>
       </div>
       <input type="file" id="cFile" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple class="hidden">
 
@@ -146,6 +146,1110 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
+/* ===== Auto-Scan engine (CNIC Scanner se liya gaya — khalis JS, koi library nahi) ===== */
+        function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
+        function dist(a, b) { var dx = a.x - b.x, dy = a.y - b.y; return Math.sqrt(dx * dx + dy * dy); }
+        function hexToRgb(hex) {
+          var n = parseInt(hex.slice(1), 16);
+          return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+        }
+        function makeCanvas(w, h) {
+          var c = document.createElement('canvas');
+          c.width = Math.max(1, Math.round(w));
+          c.height = Math.max(1, Math.round(h));
+          return c;
+        }
+        /* ================= auto edge detection ================= */
+        function blurPass(src, w, h) {
+          var dst = new Float32Array(src.length);
+          var x, y, i;
+          for (y = 0; y < h; y++) {
+            for (x = 0; x < w; x++) {
+              var xm = x > 0 ? x - 1 : 0, xp = x < w - 1 ? x + 1 : w - 1;
+              dst[y * w + x] = (src[y * w + xm] + 2 * src[y * w + x] + src[y * w + xp]) * 0.25;
+            }
+          }
+          var out = new Float32Array(src.length);
+          for (y = 0; y < h; y++) {
+            var ym = y > 0 ? y - 1 : 0, yp = y < h - 1 ? y + 1 : h - 1;
+            for (x = 0; x < w; x++) {
+              out[y * w + x] = (dst[ym * w + x] + 2 * dst[y * w + x] + dst[yp * w + x]) * 0.25;
+            }
+          }
+          return out;
+        }
+
+        /* ---------- detection helpers ---------- */
+        function convexHull(pts) {
+          var p = pts.slice().sort(function (a, b) { return (a.x - b.x) || (a.y - b.y); });
+          var u = [], i;
+          for (i = 0; i < p.length; i++) {
+            if (u.length && u[u.length - 1].x === p[i].x && u[u.length - 1].y === p[i].y) continue;
+            u.push(p[i]);
+          }
+          if (u.length < 3) return u;
+          function cross(o, a, b) { return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x); }
+          var lower = [], upper = [];
+          for (i = 0; i < u.length; i++) {
+            while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], u[i]) <= 0) lower.pop();
+            lower.push(u[i]);
+          }
+          for (i = u.length - 1; i >= 0; i--) {
+            while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], u[i]) <= 0) upper.pop();
+            upper.push(u[i]);
+          }
+          lower.pop(); upper.pop();
+          return lower.concat(upper);
+        }
+
+        function dpChain(chain, eps) {
+          var n = chain.length;
+          if (n <= 2) return chain.slice();
+          var keep = new Uint8Array(n);
+          keep[0] = 1; keep[n - 1] = 1;
+          var stack = [[0, n - 1]];
+          while (stack.length) {
+            var seg = stack.pop(), a = seg[0], b = seg[1];
+            if (b <= a + 1) continue;
+            var A = chain[a], B = chain[b];
+            var dx = B.x - A.x, dy = B.y - A.y;
+            var len = Math.sqrt(dx * dx + dy * dy) || 1e-9;
+            var maxD = 0, maxI = -1;
+            for (var i = a + 1; i < b; i++) {
+              var d = Math.abs((chain[i].x - A.x) * dy - (chain[i].y - A.y) * dx) / len;
+              if (d > maxD) { maxD = d; maxI = i; }
+            }
+            if (maxI > 0 && maxD > eps) {
+              keep[maxI] = 1;
+              stack.push([a, maxI]);
+              stack.push([maxI, b]);
+            }
+          }
+          var out = [];
+          for (var j = 0; j < n; j++) if (keep[j]) out.push(chain[j]);
+          return out;
+        }
+
+        function approxClosedQuad(hull) {
+          var n = hull.length, i;
+          if (n < 4) return null;
+          var per = 0;
+          for (i = 0; i < n; i++) per += dist(hull[i], hull[(i + 1) % n]);
+          var i1 = 0, best = -1;
+          for (i = 1; i < n; i++) {
+            var d0 = dist(hull[0], hull[i]);
+            if (d0 > best) { best = d0; i1 = i; }
+          }
+          var chainA = hull.slice(0, i1 + 1);
+          var chainB = hull.slice(i1).concat([hull[0]]);
+          var epsList = [0.006, 0.012, 0.02, 0.03, 0.042, 0.06];
+          for (var e = 0; e < epsList.length; e++) {
+            var a = dpChain(chainA, per * epsList[e]);
+            var b = dpChain(chainB, per * epsList[e]);
+            var merged = a.concat(b.slice(1, b.length - 1));
+            if (merged.length === 4) return merged;
+          }
+          /* phir bhi 4 nahi mile: sab se kam asar wala kona hatate jao */
+          var pts = hull.slice();
+          if (pts.length > 900) {
+            var thinned = [];
+            var step = Math.ceil(pts.length / 900);
+            for (i = 0; i < pts.length; i += step) thinned.push(pts[i]);
+            pts = thinned;
+          }
+          while (pts.length > 4) {
+            var minA = Infinity, minI = 0;
+            for (i = 0; i < pts.length; i++) {
+              var p0 = pts[(i + pts.length - 1) % pts.length], p1 = pts[i], p2 = pts[(i + 1) % pts.length];
+              var ar = Math.abs((p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x));
+              if (ar < minA) { minA = ar; minI = i; }
+            }
+            pts.splice(minI, 1);
+          }
+          return pts;
+        }
+
+        function orderQuad(pts) {
+          var tl = pts[0], tr = pts[0], br = pts[0], bl = pts[0];
+          for (var i = 0; i < pts.length; i++) {
+            var p = pts[i], s = p.x + p.y, d = p.x - p.y;
+            if (s < tl.x + tl.y) tl = p;
+            if (s > br.x + br.y) br = p;
+            if (d > tr.x - tr.y) tr = p;
+            if (d < bl.x - bl.y) bl = p;
+          }
+          return [tl, tr, br, bl];
+        }
+
+        function quadAreaAbs(q) {
+          var a = 0;
+          for (var i = 0; i < 4; i++) {
+            var p = q[i], r = q[(i + 1) % 4];
+            a += p.x * r.y - r.x * p.y;
+          }
+          return Math.abs(a) / 2;
+        }
+
+        function quadLooksValid(q, w, h) {
+          var i, j;
+          for (i = 0; i < 4; i++) {
+            for (j = i + 1; j < 4; j++) {
+              if (dist(q[i], q[j]) < Math.min(w, h) * 0.15) return false;
+            }
+          }
+          var area = quadAreaAbs(q);
+          if (area < w * h * 0.10 || area > w * h * 0.97) return false;
+          /* convex: saare cross products ek hi sign ke hon */
+          var sign = 0;
+          for (i = 0; i < 4; i++) {
+            var a = q[i], b = q[(i + 1) % 4], c = q[(i + 2) % 4];
+            var cr = (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x);
+            if (Math.abs(cr) < 1e-6) return false;
+            var s = cr > 0 ? 1 : -1;
+            if (sign === 0) sign = s; else if (s !== sign) return false;
+          }
+          var wAvg = (dist(q[0], q[1]) + dist(q[3], q[2])) / 2;
+          var hAvg = (dist(q[0], q[3]) + dist(q[1], q[2])) / 2;
+          var ratio = Math.max(wAvg, hAvg) / Math.max(1, Math.min(wAvg, hAvg));
+          if (ratio > 2.7) return false;
+          return true;
+        }
+
+        function quadFromPoints(pts, w, h) {
+          if (!pts || pts.length < 40) return null;
+          var hull = convexHull(pts);
+          if (hull.length < 4) return null;
+          var approx = approxClosedQuad(hull);
+          if (!approx || approx.length !== 4) return null;
+          var q = orderQuad(approx);
+          return quadLooksValid(q, w, h) ? q : null;
+        }
+
+        /* mask ke connected hisse label karo (size samet) */
+        function labelComponents(mask, w, h) {
+          var labels = new Int32Array(w * h);
+          var sizes = [0];
+          var cur = 0;
+          var stack = [];
+          var start, idx, x, y, size;
+          for (start = 0; start < w * h; start++) {
+            if (!mask[start] || labels[start]) continue;
+            cur++;
+            size = 0;
+            labels[start] = cur;
+            stack.length = 0;
+            stack.push(start);
+            while (stack.length) {
+              idx = stack.pop();
+              size++;
+              x = idx % w; y = (idx / w) | 0;
+              if (x > 0 && mask[idx - 1] && !labels[idx - 1]) { labels[idx - 1] = cur; stack.push(idx - 1); }
+              if (x < w - 1 && mask[idx + 1] && !labels[idx + 1]) { labels[idx + 1] = cur; stack.push(idx + 1); }
+              if (y > 0 && mask[idx - w] && !labels[idx - w]) { labels[idx - w] = cur; stack.push(idx - w); }
+              if (y < h - 1 && mask[idx + w] && !labels[idx + w]) { labels[idx + w] = cur; stack.push(idx + w); }
+            }
+            sizes[cur] = size;
+          }
+          return { labels: labels, sizes: sizes, count: cur };
+        }
+
+        /* jin components ko keep(label) true kahe, un ki boundary points */
+        function boundaryPoints(comp, w, h, keep) {
+          var labels = comp.labels;
+          var pts = [];
+          for (var y = 0; y < h; y++) {
+            for (var x = 0; x < w; x++) {
+              var idx = y * w + x;
+              var lb = labels[idx];
+              if (!lb || !keep(lb)) continue;
+              if (x === 0 || labels[idx - 1] !== lb || x === w - 1 || labels[idx + 1] !== lb ||
+                  y === 0 || labels[idx - w] !== lb || y === h - 1 || labels[idx + w] !== lb) {
+                pts.push({ x: x, y: y });
+              }
+            }
+          }
+          return pts;
+        }
+
+        /* Kinaron se band (enclosed) hissay hi card ke andar ho sakte hain:
+           background ko photo ke border se flood karke bahar nikaal do, jo
+           andar band reh jaye wo card hai. Saaya card ko do band hisson mein
+           kaat sakta hai, is liye neeche greedy tareeqa hai: bara hissa pehle,
+           doosra hissa sirf tab milta hai jab edge-fit behtar ho. */
+        /* background ko border se flood karke bahar nikaalo — jo pixels
+           kinaron se band reh jayein (enclosed) un ka mask */
+        function enclosedMask(edge, w, h) {
+          var bg = new Uint8Array(w * h);
+          var stack = [];
+          var x, y, idx;
+          for (x = 0; x < w; x++) {
+            if (!edge[x]) { bg[x] = 1; stack.push(x); }
+            idx = (h - 1) * w + x;
+            if (!edge[idx]) { bg[idx] = 1; stack.push(idx); }
+          }
+          for (y = 0; y < h; y++) {
+            idx = y * w;
+            if (!edge[idx]) { bg[idx] = 1; stack.push(idx); }
+            idx = y * w + w - 1;
+            if (!edge[idx]) { bg[idx] = 1; stack.push(idx); }
+          }
+          while (stack.length) {
+            idx = stack.pop();
+            x = idx % w; y = (idx / w) | 0;
+            if (x > 0 && !edge[idx - 1] && !bg[idx - 1]) { bg[idx - 1] = 1; stack.push(idx - 1); }
+            if (x < w - 1 && !edge[idx + 1] && !bg[idx + 1]) { bg[idx + 1] = 1; stack.push(idx + 1); }
+            if (y > 0 && !edge[idx - w] && !bg[idx - w]) { bg[idx - w] = 1; stack.push(idx - w); }
+            if (y < h - 1 && !edge[idx + w] && !bg[idx + w]) { bg[idx + w] = 1; stack.push(idx + w); }
+          }
+          var mask = new Uint8Array(w * h);
+          for (var i = 0; i < w * h; i++) mask[i] = (!edge[i] && !bg[i]) ? 1 : 0;
+          return mask;
+        }
+
+        function enclosedRegionQuad(edge, mask, w, h) {
+          var comp = labelComponents(mask, w, h);
+          var order = [];
+          for (var lb = 1; lb <= comp.count; lb++) {
+            if (comp.sizes[lb] > 0) order.push(lb);
+          }
+          order.sort(function (a, b) { return comp.sizes[b] - comp.sizes[a]; });
+          if (!order.length || comp.sizes[order[0]] < w * h * 0.02) return null;
+
+          /* sab se baray band hisse se shuru karo; doosra bara hissa sirf
+             tab milao jab quad ki edge-fit behtar ho — saaye se kata hua
+             card ka neechla hissa is tarah jud jata hai, lekin background
+             ki band gali (jo fit kharab karti hai) nahi judti */
+          var minSize = Math.round(w * h * 0.012);
+          function quadFor(set) {
+            var pts = boundaryPoints(comp, w, h, function (l) { return !!set[l]; });
+            return quadFromPoints(pts, w, h);
+          }
+          var keepSet = {};
+          keepSet[order[0]] = true;
+          var curQ = quadFor(keepSet);
+          var curS = curQ ? edgeSupport(curQ, edge, w, h) : -1;
+          var curA = curQ ? quadAreaAbs(curQ) : 0;
+          for (var oi = 1; oi < order.length; oi++) {
+            var lb2 = order[oi];
+            if (comp.sizes[lb2] < minSize) break;
+            var trial = {};
+            for (var kk in keepSet) trial[kk] = true;
+            trial[lb2] = true;
+            var tq = quadFor(trial);
+            if (!tq) continue;
+            var ts = edgeSupport(tq, edge, w, h);
+            var ta = quadAreaAbs(tq);
+            /* do sooratein: fit saaf behtar ho, ya fit takreeban waisa hi
+               rahe aur quad bara ho jaye — card ke andar ki seedhi lakeer
+               (header ke neeche wali) asal kinara nahi hoti, is liye andar
+               wala chhota quad nahi jeetna chahiye */
+            if (ts > curS + 0.02 || (ts >= curS - 0.04 && ta > curA * 1.03)) {
+              keepSet = trial; curQ = tq; curS = ts; curA = ta;
+            }
+          }
+          return curQ;
+        }
+
+        /* Otsu threshold: card background se roshni mein alag ho to sab se
+           bara rang-hissa hi card hota hai (halka card / gehra card dono
+           taraf ke candidate bana kar bhejta hai) */
+        function otsuCandidates(gray, w, h) {
+          var hist = new Float64Array(256);
+          var i, total = w * h;
+          for (i = 0; i < total; i++) hist[clamp(Math.round(gray[i]), 0, 255)]++;
+          var sum = 0;
+          for (i = 0; i < 256; i++) sum += i * hist[i];
+          var sumB = 0, wB = 0, maxVar = -1, thresh = 127;
+          for (i = 0; i < 256; i++) {
+            wB += hist[i];
+            if (wB === 0) continue;
+            var wF = total - wB;
+            if (wF === 0) break;
+            sumB += i * hist[i];
+            var mB = sumB / wB, mF = (sum - sumB) / wF;
+            var between = wB * wF * (mB - mF) * (mB - mF);
+            if (between > maxVar) { maxVar = between; thresh = i; }
+          }
+          var out = [];
+          for (var pol = 0; pol < 2; pol++) {
+            var mask = new Uint8Array(total);
+            for (i = 0; i < total; i++) mask[i] = (pol === 0 ? gray[i] > thresh : gray[i] <= thresh) ? 1 : 0;
+            var comp = labelComponents(mask, w, h);
+            var bestLabel = 0, bestSize = 0;
+            for (var lb = 1; lb <= comp.count; lb++) {
+              if (comp.sizes[lb] > bestSize) { bestSize = comp.sizes[lb]; bestLabel = lb; }
+            }
+            if (!bestLabel) continue;
+            var frac = bestSize / total;
+            if (frac < 0.10 || frac > 0.96) continue;
+            (function (bl) {
+              var pts = boundaryPoints(comp, w, h, function (l) { return l === bl; });
+              var q = quadFromPoints(pts, w, h);
+              if (q) out.push(q);
+            })(bestLabel);
+          }
+          return out;
+        }
+
+        /* quad ki chaaron sides asal edge pixels par kitni fit hain (0..1) */
+        function edgeSupport(q, edge, w, h) {
+          var hits = 0, total = 0;
+          for (var s = 0; s < 4; s++) {
+            var a = q[s], b = q[(s + 1) % 4];
+            for (var k = 0; k <= 30; k++) {
+              var t = k / 30;
+              var cx = Math.round(a.x + (b.x - a.x) * t);
+              var cy = Math.round(a.y + (b.y - a.y) * t);
+              var found = false;
+              for (var dy = -2; dy <= 2 && !found; dy++) {
+                for (var dx = -2; dx <= 2; dx++) {
+                  var nx = cx + dx, ny = cy + dy;
+                  if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+                  if (edge[ny * w + nx]) { found = true; break; }
+                }
+              }
+              total++;
+              if (found) hits++;
+            }
+          }
+          return total ? hits / total : 0;
+        }
+
+        /* p convex quad q ke andar hai? (kinare par ho to bhi andar) */
+        function pointInQuad(p, q) {
+          var sign = 0;
+          for (var i = 0; i < 4; i++) {
+            var a = q[i], b = q[(i + 1) % 4];
+            var cr = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+            if (Math.abs(cr) < 1e-9) continue;
+            var s = cr > 0 ? 1 : -1;
+            if (sign === 0) sign = s; else if (s !== sign) return false;
+          }
+          return true;
+        }
+
+        /* outer quad inner ko poora apne andar rakhta hai? (halki si
+           riayat ke saath taaki 1-2px ki DP ghalati rok na bane) */
+        function quadContainsQuad(outer, inner) {
+          if (quadAreaAbs(outer) <= quadAreaAbs(inner) * 1.02) return false;
+          var cx = 0, cy = 0, i;
+          for (i = 0; i < 4; i++) { cx += outer[i].x; cy += outer[i].y; }
+          cx /= 4; cy /= 4;
+          var grown = outer.map(function (p) {
+            return { x: cx + (p.x - cx) * 1.10, y: cy + (p.y - cy) * 1.10 };
+          });
+          for (i = 0; i < 4; i++) {
+            if (!pointInQuad(inner[i], grown)) return false;
+          }
+          return true;
+        }
+
+        function dilateEdge(edge, w, h) {
+          var dil = new Uint8Array(w * h);
+          for (var y = 0; y < h; y++) {
+            for (var x = 0; x < w; x++) {
+              var idx = y * w + x;
+              if (edge[idx] || (x > 0 && edge[idx - 1]) || (x < w - 1 && edge[idx + 1]) ||
+                  (y > 0 && edge[idx - w]) || (y < h - 1 && edge[idx + w])) dil[idx] = 1;
+            }
+          }
+          return dil;
+        }
+
+        /* hysteresis edge map: mazboot kinaron se jude kamzor kinare bhi
+           rakho, background ka akela shor (noise) saaf ho jata hai */
+        function hysteresisEdges(mag, w, h, high, low) {
+          var edge = new Uint8Array(w * h);
+          var stack = [];
+          var i, cur, cx, cy, ox, oy, nx, ny, nIdx;
+          for (i = 0; i < w * h; i++) {
+            if (mag[i] >= high) { edge[i] = 1; stack.push(i); }
+          }
+          while (stack.length) {
+            cur = stack.pop();
+            cx = cur % w; cy = (cur / w) | 0;
+            for (oy = -1; oy <= 1; oy++) {
+              for (ox = -1; ox <= 1; ox++) {
+                if (!ox && !oy) continue;
+                nx = cx + ox; ny = cy + oy;
+                if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+                nIdx = ny * w + nx;
+                if (!edge[nIdx] && mag[nIdx] >= low) { edge[nIdx] = 1; stack.push(nIdx); }
+              }
+            }
+          }
+          return edge;
+        }
+
+        function erodeEdge(edge, w, h) {
+          var out = new Uint8Array(w * h);
+          for (var y = 0; y < h; y++) {
+            for (var x = 0; x < w; x++) {
+              var idx = y * w + x;
+              if (!edge[idx]) continue;
+              if (x > 0 && !edge[idx - 1]) continue;
+              if (x < w - 1 && !edge[idx + 1]) continue;
+              if (y > 0 && !edge[idx - w]) continue;
+              if (y < h - 1 && !edge[idx + w]) continue;
+              out[idx] = 1;
+            }
+          }
+          return out;
+        }
+
+        /* kinara band karo: 2 dafa phailao, 1 dafa sikoro — chhoti dararein
+           band ho jati hain, taaki background flood card ke andar na ghuse
+           (CNIC ke gehray header ke upar wali kamzor lakeer par yehi hota tha) */
+        function closeEdge(edge, w, h) {
+          return erodeEdge(dilateEdge(dilateEdge(edge, w, h), w, h), w, h);
+        }
+
+        /* photo ke kinaron se background rang ko phailao: parosi pixel se
+           milta rang aage barhta hai, mazboot kinara (edgeWall) deewaar hai.
+           Roshni ka tedha saaya (gradient) bhi is se nahi rukta.
+           Wapas milta hai "background nahi" wala mask (card + jo kuch
+           meiz/farsh se alag hai). */
+        function bgFloodMask(gray, mag, w, h, growTol, edgeWall) {
+          var total = w * h;
+          var bg = new Uint8Array(total);
+          var stack = [];
+          var x, y, idx;
+          for (x = 0; x < w; x++) { bg[x] = 1; stack.push(x); idx = (h - 1) * w + x; bg[idx] = 1; stack.push(idx); }
+          for (y = 0; y < h; y++) { idx = y * w; bg[idx] = 1; stack.push(idx); idx = y * w + w - 1; bg[idx] = 1; stack.push(idx); }
+          while (stack.length) {
+            var cur = stack.pop();
+            var cx = cur % w, cy = (cur / w) | 0;
+            var cg = gray[cur];
+            var nb;
+            if (cx > 0) { nb = cur - 1; if (!bg[nb] && mag[nb] < edgeWall && Math.abs(gray[nb] - cg) <= growTol) { bg[nb] = 1; stack.push(nb); } }
+            if (cx < w - 1) { nb = cur + 1; if (!bg[nb] && mag[nb] < edgeWall && Math.abs(gray[nb] - cg) <= growTol) { bg[nb] = 1; stack.push(nb); } }
+            if (cy > 0) { nb = cur - w; if (!bg[nb] && mag[nb] < edgeWall && Math.abs(gray[nb] - cg) <= growTol) { bg[nb] = 1; stack.push(nb); } }
+            if (cy < h - 1) { nb = cur + w; if (!bg[nb] && mag[nb] < edgeWall && Math.abs(gray[nb] - cg) <= growTol) { bg[nb] = 1; stack.push(nb); } }
+          }
+          var mask = new Uint8Array(total);
+          for (var i = 0; i < total; i++) mask[i] = bg[i] ? 0 : 1;
+          return mask;
+        }
+
+        /* mask ke sab se baray hisson se quad banao */
+        function quadsFromMask(mask, w, h, minFrac, maxCount) {
+          var comp = labelComponents(mask, w, h);
+          var order = [];
+          for (var lb = 1; lb <= comp.count; lb++) {
+            if (comp.sizes[lb] >= w * h * minFrac) order.push(lb);
+          }
+          order.sort(function (a, b) { return comp.sizes[b] - comp.sizes[a]; });
+          var out = [];
+          var n = Math.min(order.length, maxCount);
+          for (var i = 0; i < n; i++) {
+            (function (bl) {
+              var pts = boundaryPoints(comp, w, h, function (l) { return l === bl; });
+              var q = quadFromPoints(pts, w, h);
+              if (q) out.push(q);
+            })(order[i]);
+          }
+          return out;
+        }
+
+        /* edge map ke sab se lambay band kinaron (contours) se quad —
+           card ki apni outline aam tor par sab se lamba band kinara hoti hai,
+           chahe card kaghaz jaisi safed cheez par hi rakha ho */
+        function quadsFromEdgeContours(edge, w, h) {
+          var comp = labelComponents(edge, w, h);
+          var order = [];
+          for (var lb = 1; lb <= comp.count; lb++) {
+            if (comp.sizes[lb] >= 140) order.push(lb);
+          }
+          order.sort(function (a, b) { return comp.sizes[b] - comp.sizes[a]; });
+          var out = [];
+          var n = Math.min(order.length, 3);
+          for (var i = 0; i < n; i++) {
+            (function (bl) {
+              var pts = boundaryPoints(comp, w, h, function (l) { return l === bl; });
+              if (pts.length > 4000) {
+                var th = [];
+                var step = Math.ceil(pts.length / 4000);
+                for (var k = 0; k < pts.length; k += step) th.push(pts[k]);
+                pts = th;
+              }
+              var q = quadFromPoints(pts, w, h);
+              if (q) out.push(q);
+            })(order[i]);
+          }
+          return out;
+        }
+
+        /* aik side (a->b) asal edge pixels par kitni fit hai (0..1) */
+        function sideSupport(a, b, edge, w, h) {
+          var hits = 0, total = 0;
+          for (var k = 0; k <= 30; k++) {
+            var t = k / 30;
+            var cx = Math.round(a.x + (b.x - a.x) * t);
+            var cy = Math.round(a.y + (b.y - a.y) * t);
+            var found = false;
+            for (var dy = -2; dy <= 2 && !found; dy++) {
+              for (var dx = -2; dx <= 2; dx++) {
+                var nx = cx + dx, ny = cy + dy;
+                if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+                if (edge[ny * w + nx]) { found = true; break; }
+              }
+            }
+            total++;
+            if (found) hits++;
+          }
+          return total ? hits / total : 0;
+        }
+
+        /* andar wale quad ki kitni sides bahar wale ki sides se chipki
+           hui hain — chipki sides hon to andar wala asal mein card ka
+           hissa hai (misal: header ke neeche wali lakeer), alag rakhi
+           cheez ki sides bahar wale se door hoti hain */
+        function sharedSideCount(inner, outer, w, h) {
+          var tol = Math.max(w, h) * 0.03;
+          var count = 0;
+          for (var i = 0; i < 4; i++) {
+            var a = inner[i], b = inner[(i + 1) % 4];
+            var mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+            var iax = b.x - a.x, iay = b.y - a.y;
+            var il = Math.sqrt(iax * iax + iay * iay) || 1;
+            for (var j = 0; j < 4; j++) {
+              var c = outer[j], d = outer[(j + 1) % 4];
+              var dx = d.x - c.x, dy = d.y - c.y;
+              var len = Math.sqrt(dx * dx + dy * dy) || 1;
+              var dLine = Math.abs((mx - c.x) * dy - (my - c.y) * dx) / len;
+              var par = Math.abs((iax * dx + iay * dy) / (il * len));
+              if (dLine < tol && par > 0.94) { count++; break; }
+            }
+          }
+          return count;
+        }
+
+        function lineIntersect(l1, l2) {
+          var d1x = l1.b.x - l1.a.x, d1y = l1.b.y - l1.a.y;
+          var d2x = l2.b.x - l2.a.x, d2y = l2.b.y - l2.a.y;
+          var den = d1x * d2y - d1y * d2x;
+          if (Math.abs(den) < 1e-9) return { x: (l1.b.x + l2.a.x) / 2, y: (l1.b.y + l2.a.y) / 2 };
+          var t = ((l2.a.x - l1.a.x) * d2y - (l2.a.y - l1.a.y) * d2x) / den;
+          return { x: l1.a.x + d1x * t, y: l1.a.y + d1y * t };
+        }
+
+        /* har side ko aas paas (±10%) sab se mazboot asal lakeer par
+           bithao, phir konay lakeeron ke takraav se dobara banao */
+        function refineQuadSides(q, edge, w, h) {
+          var cx = 0, cy = 0, i, s;
+          for (i = 0; i < 4; i++) { cx += q[i].x; cy += q[i].y; }
+          cx /= 4; cy /= 4;
+          var lines = [];
+          for (s = 0; s < 4; s++) {
+            var a = q[s], b = q[(s + 1) % 4];
+            var dx = b.x - a.x, dy = b.y - a.y;
+            var len = Math.sqrt(dx * dx + dy * dy) || 1;
+            var nx = -dy / len, ny = dx / len;
+            var mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+            if ((mx - cx) * nx + (my - cy) * ny < 0) { nx = -nx; ny = -ny; }
+            var range = Math.max(4, len * 0.10);
+            var bestOff = 0, bestScore = sideSupport(a, b, edge, w, h);
+            for (var o = -range; o <= range; o += 2) {
+              if (o === 0) continue;
+              var sa = { x: a.x + nx * o, y: a.y + ny * o };
+              var sb = { x: b.x + nx * o, y: b.y + ny * o };
+              var sc = sideSupport(sa, sb, edge, w, h);
+              if (sc > bestScore + 0.03 || (sc >= bestScore - 0.01 && Math.abs(o) < Math.abs(bestOff))) {
+                if (sc > bestScore + 0.03 || bestOff !== 0 || sc > bestScore) { bestScore = sc; bestOff = o; }
+              }
+            }
+            lines.push({
+              a: { x: a.x + nx * bestOff, y: a.y + ny * bestOff },
+              b: { x: b.x + nx * bestOff, y: b.y + ny * bestOff }
+            });
+          }
+          var out = [];
+          for (i = 0; i < 4; i++) out.push(lineIntersect(lines[(i + 3) % 4], lines[i]));
+          return out;
+        }
+
+        /* Local shadow mask: bare block ki ausat roshni se zyada
+           roshan hisse ko “kaghaz/card” samjho — saaya aadhe card
+           par ho to bhi outline banta hai */
+        function localShadowMask(gray, w, h) {
+          var bw = Math.max(24, Math.round(w / 9)), bh = Math.max(24, Math.round(h / 9));
+          var gw = Math.ceil(w / bw), gh = Math.ceil(h / bh);
+          var means = new Float32Array(gw * gh), counts = new Float32Array(gw * gh);
+          var x, y;
+          for (y = 0; y < h; y++) for (x = 0; x < w; x++) {
+            var bi = ((y / bh) | 0) * gw + ((x / bw) | 0);
+            means[bi] += gray[y * w + x]; counts[bi]++;
+          }
+          for (var bi2 = 0; bi2 < means.length; bi2++) means[bi2] /= Math.max(1, counts[bi2]);
+          /* global ausat */
+          var gAvg = 0; for (var gi = 0; gi < means.length; gi++) gAvg += means[gi]; gAvg /= Math.max(1, means.length);
+          var brightIsDoc = gAvg < 128; /* gehra background -> roshan card; aur ulta bhi check karte hain neeche dono polarity quads bante hain is liye yahan roshan hissay rakho */
+          var mask = new Uint8Array(w * h);
+          for (y = 0; y < h; y++) for (x = 0; x < w; x++) {
+            var bIdx = ((y / bh) | 0) * gw + ((x / bw) | 0);
+            var localMean = means[bIdx];
+            var v = gray[y * w + x];
+            /* pixel apne block se wazeh roshan hai YA block khud global se roshan hai aur pixel us ke qareeb hai */
+            mask[y * w + x] = (v > localMean + 6 || (localMean > gAvg + 10 && v > gAvg + 2)) ? 1 : 0;
+          }
+          return mask;
+        }
+
+        function expectedRatio(docType) { return docType === 'a4' ? 1.4142 : 1.586; }
+        function quadRatio(q) {
+          var wAvg = (dist(q[0], q[1]) + dist(q[3], q[2])) / 2;
+          var hAvg = (dist(q[0], q[3]) + dist(q[1], q[2])) / 2;
+          return Math.max(wAvg, hAvg) / Math.max(1, Math.min(wAvg, hAvg));
+        }
+        function minSideSupport(q, edge, w, h) {
+          var m = 1;
+          for (var s = 0; s < 4; s++) m = Math.min(m, sideSupport(q[s], q[(s + 1) % 4], edge, w, h));
+          return m;
+        }
+
+        function detectDocumentCorners(img, docType) {
+          /* Do size par koshish: bara size bareek kinare pakarta hai,
+             chhota size saaye/shor ko kam karke asal outline wazeh karta hai */
+          var attempts = [1100, 720];
+          var bestOverall = null;
+          for (var ai = 0; ai < attempts.length; ai++) {
+            var r = detectAtScale(img, docType, attempts[ai]);
+            if (r && (!bestOverall || r.score > bestOverall.score)) bestOverall = r;
+            if (bestOverall && bestOverall.score >= 0.62) break;
+          }
+          return bestOverall;
+        }
+
+        function detectAtScale(img, docType, maxDim) {
+          var scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+          var w = Math.max(40, Math.round(img.naturalWidth * scale));
+          var h = Math.max(40, Math.round(img.naturalHeight * scale));
+          var c = makeCanvas(w, h);
+          var ctx = c.getContext('2d', { willReadFrequently: true });
+          ctx.drawImage(img, 0, 0, w, h);
+          var data = ctx.getImageData(0, 0, w, h).data;
+
+          /* rang ke teen hisse alag blur karo — kinara sirf roshni se nahi,
+             rang se bhi naapa jayega. Gehray kapray par rakha sabz header
+             roshni mein takreeban barabar hota hai, farq sirf rang mein
+             hai; sirf grayscale wala kinara wahan andha ho jata tha. */
+          var chR = new Float32Array(w * h), chG = new Float32Array(w * h), chB = new Float32Array(w * h);
+          var gray = new Float32Array(w * h);
+          var i, x, y;
+          for (i = 0; i < w * h; i++) {
+            chR[i] = data[i * 4]; chG[i] = data[i * 4 + 1]; chB[i] = data[i * 4 + 2];
+          }
+          chR = blurPass(blurPass(chR, w, h), w, h);
+          chG = blurPass(blurPass(chG, w, h), w, h);
+          chB = blurPass(blurPass(chB, w, h), w, h);
+          for (i = 0; i < w * h; i++) {
+            gray[i] = chR[i] * 0.299 + chG[i] * 0.587 + chB[i] * 0.114;
+          }
+
+          /* Sobel magnitude — teeno rang channels mila kar (Di Zenzo) */
+          var mag = new Float32Array(w * h);
+          var maxMag = 0.0001;
+          var chans = [chR, chG, chB];
+          for (y = 1; y < h - 1; y++) {
+            for (x = 1; x < w - 1; x++) {
+              var idx = y * w + x;
+              var acc = 0;
+              for (var ci2 = 0; ci2 < 3; ci2++) {
+                var gch = chans[ci2];
+                var gx = -gch[idx - w - 1] - 2 * gch[idx - 1] - gch[idx + w - 1]
+                         + gch[idx - w + 1] + 2 * gch[idx + 1] + gch[idx + w + 1];
+                var gy = -gch[idx - w - 1] - 2 * gch[idx - w] - gch[idx - w + 1]
+                         + gch[idx + w - 1] + 2 * gch[idx + w] + gch[idx + w + 1];
+                acc += gx * gx + gy * gy;
+              }
+              var m = Math.sqrt(acc);
+              mag[idx] = m;
+              if (m > maxMag) maxMag = m;
+            }
+          }
+          if (maxMag < 8) return null;
+
+          /* percentile threshold: high = tasveer ke sab se mazboot kinare.
+             Global max par rakha purana threshold halki card-edge ko aksar
+             kaat deta tha, is liye ab histogram se percentile liya hai. */
+          var BINS = 512;
+          var hist = new Float64Array(BINS);
+          for (i = 0; i < w * h; i++) {
+            var bin = Math.min(BINS - 1, (mag[i] / maxMag * BINS) | 0);
+            hist[bin]++;
+          }
+          function magAtPercentile(p) {
+            var target = w * h * p, acc = 0;
+            for (var bIdx = 0; bIdx < BINS; bIdx++) {
+              acc += hist[bIdx];
+              if (acc >= target) return (bIdx + 0.5) / BINS * maxMag;
+            }
+            return maxMag;
+          }
+          var high = magAtPercentile(0.985);
+          if (high < maxMag * 0.05) high = maxMag * 0.05;
+
+          /* Teen hassasiyat ke edge maps — saaf, aam, aur bohot hassas
+             (halke kinare / saaye wali photo ke liye). Teeno ko close
+             karke istemal karte hain. */
+          var raw1 = hysteresisEdges(mag, w, h, high, high * 0.4);
+          var raw2 = hysteresisEdges(mag, w, h, high * 0.55, high * 0.16);
+          var raw3 = hysteresisEdges(mag, w, h, high * 0.38, high * 0.09);
+          var edge1 = dilateEdge(closeEdge(raw1, w, h), w, h);
+          var edge2 = dilateEdge(closeEdge(raw2, w, h), w, h);
+          var edge3 = dilateEdge(closeEdge(raw3, w, h), w, h);
+          var edgeU = new Uint8Array(w * h);
+          for (i = 0; i < w * h; i++) edgeU[i] = (edge1[i] || edge2[i] || edge3[i]) ? 1 : 0;
+
+          var rawQuads = [];
+          function pushQ(q) { if (q) rawQuads.push(q); }
+          function pushAll(list) { for (var k = 0; k < list.length; k++) pushQ(list[k]); }
+
+          /* 1) kinaron se band hisse — teenon hassasiyat par */
+          try { pushQ(enclosedRegionQuad(edge1, enclosedMask(edge1, w, h), w, h)); } catch (e1) {}
+          try { pushQ(enclosedRegionQuad(edge2, enclosedMask(edge2, w, h), w, h)); } catch (e2) {}
+          try { pushQ(enclosedRegionQuad(edge3, enclosedMask(edge3, w, h), w, h)); } catch (e2b) {}
+
+          /* 2) background flood (rang se) — kai tolerance par */
+          try { pushAll(quadsFromMask(bgFloodMask(gray, mag, w, h, 7, high * 0.12), w, h, 0.04, 3)); } catch (e3) {}
+          try { pushAll(quadsFromMask(bgFloodMask(gray, mag, w, h, 12, high * 0.16), w, h, 0.04, 3)); } catch (e4) {}
+          try { pushAll(quadsFromMask(bgFloodMask(gray, mag, w, h, 22, high * 0.20), w, h, 0.04, 3)); } catch (e4b) {}
+
+          /* 3) sab se lambay band kinare */
+          try { pushAll(quadsFromEdgeContours(edgeU, w, h)); } catch (e5) {}
+          try { pushAll(quadsFromEdgeContours(edge3, w, h)); } catch (e5b) {}
+
+          /* 4) Otsu rang-hisse */
+          try { pushAll(otsuCandidates(gray, w, h)); } catch (e6) {}
+
+          /* 5) Saaye ke liye khaas: maqami (local) roshni se taqseem —
+             aadha card saaye mein ho to global Otsu fail hota hai,
+             local hisaab phir bhi outline nikaal deta hai */
+          try {
+            var local = localShadowMask(gray, w, h);
+            pushAll(quadsFromMask(local, w, h, 0.06, 2));
+          } catch (e6b) {}
+
+          if (!rawQuads.length) return null;
+
+          /* Scoring: sirf kul edge-fit nahi — sab se kamzor side,
+             size (aspect) ki munasbat aur area bhi shamil hai.
+             CNIC ratio 1.586, A4 ratio 1.414 — dono qareeb hain is
+             liye aspect sirf halka bonus hai, sakht shart nahi. */
+          var expR = expectedRatio(docType);
+          var candidates = [];
+          for (i = 0; i < rawQuads.length; i++) {
+            var q0 = rawQuads[i];
+            var es = edgeSupport(q0, edgeU, w, h);
+            var ms = minSideSupport(q0, edgeU, w, h);
+            var rr = quadRatio(q0);
+            var aspectBonus = Math.max(0, 1 - Math.abs(Math.log(rr / expR)) * 1.4) * 0.10;
+            var areaFrac = quadAreaAbs(q0) / (w * h);
+            var areaBonus = (areaFrac >= 0.16 && areaFrac <= 0.94) ? 0.05 : 0;
+            var score = es * 0.62 + ms * 0.28 + aspectBonus + areaBonus;
+            candidates.push({ q: q0, s: es, score: score, ms: ms });
+          }
+          candidates.sort(function (a, b) { return b.score - a.score; });
+          var best = candidates[0];
+
+          /* nested hal — header-kata hua andar quad vs kaghaz par card */
+          for (i = 0; i < candidates.length; i++) {
+            var cand = candidates[i];
+            if (cand === best) continue;
+            if (quadContainsQuad(cand.q, best.q)) {
+              if (sharedSideCount(best.q, cand.q, w, h) >= 2 && cand.score >= best.score - 0.10) best = cand;
+            } else if (quadContainsQuad(best.q, cand.q)) {
+              var ratioIn = quadAreaAbs(cand.q) / Math.max(1, quadAreaAbs(best.q));
+              var sharedIn = sharedSideCount(cand.q, best.q, w, h);
+              /* CNIC mode mein safed kaghaz par rakha card: andar wala
+                 quad tairta hua (shared side nahi) aur size card jaisa
+                 ho to bahar walay baray kaghaz par tarjeeh do — card
+                 ka safed hissa kaghaz se milta hai is liye us ka score
+                 kam hona hi hai, sakht score-shart yahan haar thi */
+              var gapAllowed = (docType === 'cnic' && sharedIn <= 1) ? 0.55 : 0.16;
+              var minEdge = (docType === 'cnic' && sharedIn <= 1) ? 0.28 : 0.38;
+              if (sharedIn <= 1 && cand.s >= minEdge &&
+                  quadAreaAbs(cand.q) >= w * h * 0.09 && ratioIn <= 0.86 && ratioIn >= 0.12 &&
+                  cand.score >= best.score - gapAllowed) {
+                best = cand;
+              }
+            }
+          }
+          /* Bohot kamzor ho to bhi agar koi maqool quad hai to wapas
+             kar do (score ke saath) — user ko khaali haath nahi bhejte,
+             wo nuqte ghaseet kar theek kar lega */
+          if (best.score < 0.16) return null;
+
+          var finalQ = best.q;
+          try {
+            var rq = refineQuadSides(best.q, edgeU, w, h);
+            if (quadLooksValid(rq, w, h) && edgeSupport(rq, edgeU, w, h) >= best.s - 0.06) finalQ = rq;
+          } catch (e7) {}
+
+          var inv = 1 / scale;
+          var cornersOut = finalQ.map(function (p) {
+            return {
+              x: clamp(p.x * inv, 0, img.naturalWidth - 1),
+              y: clamp(p.y * inv, 0, img.naturalHeight - 1)
+            };
+          });
+          return { corners: cornersOut, score: clamp(best.score, 0, 1) };
+        }
+        /* ================= perspective warp ================= */
+        function solveHomography(src, dst) {
+          /* 8x8 linear system, Gaussian elimination — maps src -> dst */
+          var A = [], b = [], i, j;
+          for (i = 0; i < 4; i++) {
+            var sx = src[i].x, sy = src[i].y, dx = dst[i].x, dy = dst[i].y;
+            A.push([-sx, -sy, -1, 0, 0, 0, sx * dx, sy * dx]);
+            b.push(-dx);
+            A.push([0, 0, 0, -sx, -sy, -1, sx * dy, sy * dy]);
+            b.push(-dy);
+          }
+          var n = 8;
+          for (i = 0; i < n; i++) {
+            var piv = i;
+            for (var r = i + 1; r < n; r++) {
+              if (Math.abs(A[r][i]) > Math.abs(A[piv][i])) piv = r;
+            }
+            if (piv !== i) {
+              var tmp = A[i]; A[i] = A[piv]; A[piv] = tmp;
+              var tb = b[i]; b[i] = b[piv]; b[piv] = tb;
+            }
+            var diag = A[i][i] || 1e-12;
+            for (var rr = i + 1; rr < n; rr++) {
+              var f = A[rr][i] / diag;
+              if (f === 0) continue;
+              for (var cc = i; cc < n; cc++) A[rr][cc] -= f * A[i][cc];
+              b[rr] -= f * b[i];
+            }
+          }
+          var h = new Array(n).fill(0);
+          for (i = n - 1; i >= 0; i--) {
+            var sum = b[i];
+            for (j = i + 1; j < n; j++) sum -= A[i][j] * h[j];
+            h[i] = sum / (A[i][i] || 1e-12);
+          }
+          return h;
+        }
+
+        function warpImage(img, corners) {
+          var c = corners;
+          var qW = (dist(c[0], c[1]) + dist(c[3], c[2])) / 2;
+          var qH = (dist(c[0], c[3]) + dist(c[1], c[2])) / 2;
+          if (qW < 10 || qH < 10) return null;
+          var k = 1600 / Math.max(qW, qH);
+          var outW = Math.max(50, Math.round(qW * k));
+          var outH = Math.max(50, Math.round(qH * k));
+
+          /* source pixels (img ya canvas dono chalega) */
+          var SW = img.naturalWidth || img.width;
+          var SH = img.naturalHeight || img.height;
+          var sc = makeCanvas(SW, SH);
+          var sctx = sc.getContext('2d', { willReadFrequently: true });
+          sctx.drawImage(img, 0, 0);
+          var srcData = sctx.getImageData(0, 0, sc.width, sc.height);
+          var sd = srcData.data, sw = sc.width, sh = sc.height;
+
+          var dst = [{ x: 0, y: 0 }, { x: outW, y: 0 }, { x: outW, y: outH }, { x: 0, y: outH }];
+          var H = solveHomography(dst, c); /* output -> source */
+          var out = makeCanvas(outW, outH);
+          var octx = out.getContext('2d');
+          var outData = octx.createImageData(outW, outH);
+          var od = outData.data;
+
+          function sampleBilinear(sx, sy) {
+            var x0 = Math.floor(sx), y0 = Math.floor(sy);
+            var fx = sx - x0, fy = sy - y0;
+            var r = 0, g = 0, b = 0, a = 0, wsum = 0;
+            for (var yy = 0; yy <= 1; yy++) {
+              for (var xx = 0; xx <= 1; xx++) {
+                var px = x0 + xx, py = y0 + yy;
+                if (px < 0 || py < 0 || px >= sw || py >= sh) continue;
+                var wgt = (xx ? fx : 1 - fx) * (yy ? fy : 1 - fy);
+                var idx = (py * sw + px) * 4;
+                r += sd[idx] * wgt; g += sd[idx + 1] * wgt; b += sd[idx + 2] * wgt; a += sd[idx + 3] * wgt;
+                wsum += wgt;
+              }
+            }
+            if (wsum <= 0) return [255, 255, 255, 255];
+            var inv = 1 / wsum;
+            return [r * inv, g * inv, b * inv, a * inv];
+          }
+
+          for (var y = 0; y < outH; y++) {
+            for (var x = 0; x < outW; x++) {
+              var den = H[6] * x + H[7] * y + 1;
+              var sx = (H[0] * x + H[1] * y + H[2]) / den;
+              var sy = (H[3] * x + H[4] * y + H[5]) / den;
+              var px = sampleBilinear(sx, sy);
+              var o = (y * outW + x) * 4;
+              od[o] = px[0]; od[o + 1] = px[1]; od[o + 2] = px[2]; od[o + 3] = 255;
+            }
+          }
+          octx.putImageData(outData, 0, 0);
+          return out;
+        }
+
+        /* ================= enhancement ================= */
+        function filterCopy(canvas, filterStr) {
+          var c = makeCanvas(canvas.width, canvas.height);
+          var ctx = c.getContext('2d');
+          if (filterStr) ctx.filter = filterStr;
+          ctx.drawImage(canvas, 0, 0);
+          ctx.filter = 'none';
+          return c;
+        }
+
+        function normalizeShadow(canvas, strength) {
+          var w = canvas.width, h = canvas.height;
+          var small = makeCanvas(Math.max(1, Math.round(w / 8)), Math.max(1, Math.round(h / 8)));
+          var sctx = small.getContext('2d', { willReadFrequently: true });
+          sctx.drawImage(canvas, 0, 0, small.width, small.height);
+          /* heavy blur of the small copy = background illumination estimate */
+          sctx.filter = 'blur(5px)';
+          sctx.drawImage(small, 0, 0);
+          sctx.drawImage(small, 0, 0);
+          sctx.filter = 'none';
+
+          var bg = makeCanvas(w, h);
+          var bctx = bg.getContext('2d', { willReadFrequently: true });
+          bctx.imageSmoothingEnabled = true;
+          bctx.drawImage(small, 0, 0, w, h);
+
+          var out = makeCanvas(w, h);
+          var octx = out.getContext('2d', { willReadFrequently: true });
+          octx.drawImage(canvas, 0, 0);
+          var imgData = octx.getImageData(0, 0, w, h);
+          var bgData = bctx.getImageData(0, 0, w, h).data;
+          var d = imgData.data;
+          for (var i = 0; i < d.length; i += 4) {
+            for (var ch = 0; ch < 3; ch++) {
+              var bgv = bgData[i + ch] + 8;
+              var norm = d[i + ch] * 255 / bgv;
+              if (norm > 255) norm = 255;
+              d[i + ch] = d[i + ch] * (1 - strength) + norm * strength;
+            }
+          }
+          octx.putImageData(imgData, 0, 0);
+          return out;
+        }
+
+        function adaptiveBW(canvas, offsetC) {
+          var w = canvas.width, h = canvas.height;
+          var ctx = canvas.getContext('2d', { willReadFrequently: true });
+          var data = ctx.getImageData(0, 0, w, h).data;
+          var gray = new Float32Array(w * h);
+          var i, x, y;
+          for (i = 0; i < w * h; i++) {
+            gray[i] = data[i * 4] * 0.299 + data[i * 4 + 1] * 0.587 + data[i * 4 + 2] * 0.114;
+          }
+          /* integral image */
+          var integral = new Float64Array((w + 1) * (h + 1));
+          for (y = 0; y < h; y++) {
+            var rowSum = 0;
+            for (x = 0; x < w; x++) {
+              rowSum += gray[y * w + x];
+              integral[(y + 1) * (w + 1) + (x + 1)] = integral[y * (w + 1) + (x + 1)] + rowSum;
+            }
+          }
+          var win = Math.max(15, Math.round(w / 14));
+          if (win % 2 === 0) win += 1;
+          var half = win >> 1;
+          function rectSum(x0, y0, x1, y1) {
+            x0 = clamp(x0, 0, w - 1); y0 = clamp(y0, 0, h - 1);
+            x1 = clamp(x1, 0, w - 1); y1 = clamp(y1, 0, h - 1);
+            var A = integral[y0 * (w + 1) + x0];
+            var B = integral[y0 * (w + 1) + (x1 + 1)];
+            var C = integral[(y1 + 1) * (w + 1) + x0];
+            var D = integral[(y1 + 1) * (w + 1) + (x1 + 1)];
+            return { sum: D - B - C + A, n: (x1 - x0 + 1) * (y1 - y0 + 1) };
+          }
+          var out = ctx.createImageData(w, h);
+          var od = out.data;
+          for (y = 0; y < h; y++) {
+            for (x = 0; x < w; x++) {
+              var rs = rectSum(x - half, y - half, x + half, y + half);
+              var mean = rs.sum / rs.n;
+              var v = gray[y * w + x] < mean - offsetC ? 0 : 255;
+              var o = (y * w + x) * 4;
+              od[o] = v; od[o + 1] = v; od[o + 2] = v; od[o + 3] = 255;
+            }
+          }
+          var oc = makeCanvas(w, h);
+          oc.getContext('2d').putImageData(out, 0, 0);
+          return oc;
+        }
+
+        function autoLevels(canvas) {
+          var w = canvas.width, h = canvas.height;
+          var ctx = canvas.getContext('2d', { willReadFrequently: true });
+          var imgData = ctx.getImageData(0, 0, w, h);
+          var d = imgData.data;
+          var histR = new Float64Array(256), histG = new Float64Array(256), histB = new Float64Array(256);
+          var i;
+          for (i = 0; i < d.length; i += 4) { histR[d[i]]++; histG[d[i + 1]]++; histB[d[i + 2]]++; }
+          function loHi(hist) {
+            var total = w * h, lo = 0, hi = 255, acc = 0, t = total * 0.01;
+            for (var v = 0; v < 256; v++) { acc += hist[v]; if (acc >= t) { lo = v; break; } }
+            acc = 0;
+            for (var v2 = 255; v2 >= 0; v2--) { acc += hist[v2]; if (acc >= t) { hi = v2; break; } }
+            if (hi <= lo + 8) { lo = Math.max(0, lo - 4); hi = Math.min(255, hi + 4); }
+            return [lo, hi];
+          }
+          var rLH = loHi(histR), gLH = loHi(histG), bLH = loHi(histB);
+          function lut(lo, hi) { var t = new Uint8ClampedArray(256); for (var v = 0; v < 256; v++) t[v] = clamp((v - lo) * 255 / Math.max(1, hi - lo), 0, 255); return t; }
+          var lr = lut(rLH[0], rLH[1]), lg = lut(gLH[0], gLH[1]), lb = lut(bLH[0], bLH[1]);
+          for (i = 0; i < d.length; i += 4) { d[i] = lr[d[i]]; d[i + 1] = lg[d[i + 1]]; d[i + 2] = lb[d[i + 2]]; }
+          var out = makeCanvas(w, h);
+          out.getContext('2d').putImageData(imgData, 0, 0);
+          return out;
+        }
+
+        /* ================= pipeline ================= */
+
+/* ===== Auto-Scan wrapper: photo mile to card seedha + saaf karke wapas do ===== */
+var scanningNow = false;
+var scannedIdx = {};
+function autoScanPhoto(file) {
+  return new Promise(function (resolve) {
+    var url = URL.createObjectURL(file);
+    var img = new Image();
+    img.onload = function () {
+      setTimeout(function () {
+        try {
+          var det = detectDocumentCorners(img, 'cnic');
+          if (!det || !det.corners || (det.score || 0) < 0.32) { URL.revokeObjectURL(url); resolve(null); return; }
+          var work = warpImage(img, det.corners);
+          if (!work) { URL.revokeObjectURL(url); resolve(null); return; }
+          work = normalizeShadow(work, 0.88);
+          work = autoLevels(work);
+          work = filterCopy(work, 'saturate(1.28) contrast(1.08) brightness(1.01)');
+          if (work.height > work.width) {
+            var rot = makeCanvas(work.height, work.width);
+            var rctx = rot.getContext('2d');
+            rctx.translate(rot.width / 2, rot.height / 2);
+            rctx.rotate(-Math.PI / 2);
+            rctx.drawImage(work, -work.width / 2, -work.height / 2);
+            work = rot;
+          }
+          if (work.toBlob) {
+            work.toBlob(function (blob) {
+              URL.revokeObjectURL(url);
+              if (!blob) { resolve(null); return; }
+              resolve(new File([blob], file.name.replace(/\.[^.]+$/, '') + '-scan.jpg', { type: 'image/jpeg' }));
+            }, 'image/jpeg', 0.92);
+          } else { URL.revokeObjectURL(url); resolve(null); }
+        } catch (e) { URL.revokeObjectURL(url); resolve(null); }
+      }, 30);
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); resolve(null); };
+    img.src = url;
+  });
+}
+
+</script>
+<script>
 var DB = "https://dogar-pos-default-rtdb.firebaseio.com/khawarPrint";
 var settings = { bw: 0, color: 0, pin: "1234" };
 var chosenFiles = [];
@@ -173,6 +1277,34 @@ function calcTotal(){
   return total;
 }
 
+function renderFileInfo(extra){
+  if (!chosenFiles.length) return;
+  var totalSize = chosenFiles.reduce(function(s, f){ return s + f.size; }, 0);
+  $("fileInfo").innerHTML = "✅ " + chosenFiles.length + " file(s) select ho gayi — kul " + (totalSize/1024).toFixed(0) + " KB<br>" +
+    chosenFiles.map(function(f, i){ return (scannedIdx[i] ? "🪪 " : "📄 ") + esc(f.name) + (scannedIdx[i] ? " (seedha scan)" : ""); }).join("<br>") +
+    (extra ? "<br>" + extra : "");
+}
+function scanChosenPhotos(){
+  var photoIdx = [];
+  chosenFiles.forEach(function(f, i){ if (/image\//.test(f.type)) photoIdx.push(i); });
+  if (!photoIdx.length) return;
+  scanningNow = true;
+  renderFileInfo("🔄 Photo seedhi ki ja rahi hai — zara intezar karein...");
+  var chain = Promise.resolve();
+  photoIdx.forEach(function(i){
+    chain = chain.then(function(){
+      return autoScanPhoto(chosenFiles[i]).then(function(nf){
+        if (nf) { chosenFiles[i] = nf; scannedIdx[i] = true; }
+      });
+    });
+  });
+  chain.then(function(){
+    scanningNow = false;
+    var n = Object.keys(scannedIdx).length;
+    renderFileInfo(n ? "🪪 " + n + " photo ka card seedha kar diya gaya hai — print bilkul saaf ayega." : "");
+  });
+}
+
 $("fileBox").addEventListener("click", function(){ $("cFile").click(); });
 $("cFile").addEventListener("change", function(){
   var files = Array.prototype.slice.call(this.files || []);
@@ -183,8 +1315,9 @@ $("cFile").addEventListener("change", function(){
     chosenFiles = []; this.value = ""; return;
   }
   chosenFiles = files;
-  $("fileInfo").innerHTML = "✅ " + files.length + " file(s) select ho gayi — kul " + (totalSize/1024).toFixed(0) + " KB<br>" +
-    files.map(function(f){ return "📄 " + esc(f.name); }).join("<br>");
+  scannedIdx = {};
+  renderFileInfo();
+  scanChosenPhotos();
   // Kul pages gin lein: har PDF ke pages + har photo/doc = 1
   var jobs = files.map(function(f){
     if (/\.pdf$/i.test(f.name) && window.pdfjsLib) {
@@ -214,6 +1347,7 @@ function readAsBase64(file){
 $("submitBtn").addEventListener("click", function(){
   var err = $("formErr"); err.classList.add("hidden");
   if (!chosenFiles.length) { err.textContent = "Pehle files select karein."; err.classList.remove("hidden"); return; }
+  if (scanningNow) { err.textContent = "Photo scan ho rahi hai — zara intezar karein, phir Order Bhejein dabayein."; err.classList.remove("hidden"); return; }
   var btn = $("submitBtn"); btn.disabled = true; btn.textContent = "⏳ Bhej raha hai...";
   var oid = "KG-" + Math.floor(1000 + Math.random() * 9000);
   var total = calcTotal();
