@@ -62,12 +62,12 @@
   <!-- ============ CUSTOMER VIEW ============ -->
   <div id="customerView">
     <div class="card" id="orderForm">
-      <label>File select karein (PDF, photo ya document)</label>
+      <label>Files select karein (ek ya zyada — PDF, photo ya document)</label>
       <div class="filebox" id="fileBox">
-        <b>📄 File chunne ke liye yahan tap karein</b>
-        <small id="fileInfo">PDF / JPG / PNG / Word — zyada se zyada 8 MB</small>
+        <b>📄 Files chunne ke liye yahan tap karein</b>
+        <small id="fileInfo">Ek sath kai files bhi select ho sakti hain — kul size zyada se zyada 8 MB</small>
       </div>
-      <input type="file" id="cFile" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" class="hidden">
+      <input type="file" id="cFile" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple class="hidden">
 
       <label>Print ki qisam</label>
       <div class="radio-row">
@@ -148,7 +148,7 @@
 <script>
 var DB = "https://dogar-pos-default-rtdb.firebaseio.com/khawarPrint";
 var settings = { bw: 0, color: 0, pin: "1234" };
-var chosenFile = null;
+var chosenFiles = [];
 var isShop = /[?&]shop=1/.test(location.search);
 
 function $(id){ return document.getElementById(id); }
@@ -175,20 +175,29 @@ function calcTotal(){
 
 $("fileBox").addEventListener("click", function(){ $("cFile").click(); });
 $("cFile").addEventListener("change", function(){
-  chosenFile = this.files[0] || null;
-  if (!chosenFile) return;
-  if (chosenFile.size > 8 * 1024 * 1024) {
-    $("fileInfo").textContent = "⚠️ File 8 MB se bari hai — bara file WhatsApp (0305 5991228) par bhej dein.";
-    chosenFile = null; this.value = ""; return;
+  var files = Array.prototype.slice.call(this.files || []);
+  if (!files.length) return;
+  var totalSize = files.reduce(function(s, f){ return s + f.size; }, 0);
+  if (totalSize > 8 * 1024 * 1024) {
+    $("fileInfo").textContent = "⚠️ Kul files 8 MB se bari hain — bari files WhatsApp (0305 5991228) par bhej dein.";
+    chosenFiles = []; this.value = ""; return;
   }
-  $("fileInfo").textContent = "✅ " + chosenFile.name + " (" + (chosenFile.size/1024).toFixed(0) + " KB)";
-  if (/\.pdf$/i.test(chosenFile.name) && window.pdfjsLib) {
-    chosenFile.arrayBuffer().then(function(buf){
-      pdfjsLib.getDocument({ data: buf }).promise.then(function(pdf){
-        $("cPages").value = pdf.numPages; calcTotal();
-      }).catch(function(){});
-    }).catch(function(){});
-  } else if (/image\//.test(chosenFile.type)) { $("cPages").value = 1; calcTotal(); }
+  chosenFiles = files;
+  $("fileInfo").innerHTML = "✅ " + files.length + " file(s) select ho gayi — kul " + (totalSize/1024).toFixed(0) + " KB<br>" +
+    files.map(function(f){ return "📄 " + esc(f.name); }).join("<br>");
+  // Kul pages gin lein: har PDF ke pages + har photo/doc = 1
+  var jobs = files.map(function(f){
+    if (/\.pdf$/i.test(f.name) && window.pdfjsLib) {
+      return f.arrayBuffer().then(function(buf){
+        return pdfjsLib.getDocument({ data: buf }).promise.then(function(pdf){ return pdf.numPages; }).catch(function(){ return 1; });
+      }).catch(function(){ return 1; });
+    }
+    return Promise.resolve(1);
+  });
+  Promise.all(jobs).then(function(counts){
+    var total = counts.reduce(function(s, n){ return s + n; }, 0);
+    $("cPages").value = total; calcTotal();
+  });
 });
 ["cPages","cCopies"].forEach(function(id){ $(id).addEventListener("input", calcTotal); });
 document.querySelectorAll('input[name=ptype]').forEach(function(r){ r.addEventListener("change", calcTotal); });
@@ -204,22 +213,25 @@ function readAsBase64(file){
 
 $("submitBtn").addEventListener("click", function(){
   var err = $("formErr"); err.classList.add("hidden");
-  var name = "", phone = "";
-  if (!chosenFile) { err.textContent = "Pehle file select karein."; err.classList.remove("hidden"); return; }
+  if (!chosenFiles.length) { err.textContent = "Pehle files select karein."; err.classList.remove("hidden"); return; }
   var btn = $("submitBtn"); btn.disabled = true; btn.textContent = "⏳ Bhej raha hai...";
   var oid = "KG-" + Math.floor(1000 + Math.random() * 9000);
   var total = calcTotal();
+  var names = chosenFiles.map(function(f){ return f.name; });
   var order = {
-    id: oid, name: name, phone: phone, fileName: chosenFile.name,
-    fileType: chosenFile.type || "", pages: parseInt($("cPages").value) || 1,
+    id: oid,
+    fileName: names.join(", "), fileCount: chosenFiles.length,
+    fileType: chosenFiles[0].type || "", pages: parseInt($("cPages").value) || 1,
     copies: parseInt($("cCopies").value) || 1,
     ptype: document.querySelector('input[name=ptype]:checked').value,
     pside: document.querySelector('input[name=pside]:checked').value,
     note: $("cNote").value.trim(), total: total, status: "new",
     ts: Date.now()
   };
-  readAsBase64(chosenFile).then(function(b64){
-    return fetch(DB + "/files/" + oid + ".json", { method: "PUT", body: JSON.stringify({ data: b64 }) });
+  Promise.all(chosenFiles.map(function(f){
+    return readAsBase64(f).then(function(b64){ return { name: f.name, data: b64 }; });
+  })).then(function(fileObjs){
+    return fetch(DB + "/files/" + oid + ".json", { method: "PUT", body: JSON.stringify({ files: fileObjs }) });
   }).then(function(){
     return fetch(DB + "/orders/" + oid + ".json", { method: "PUT", body: JSON.stringify(order) });
   }).then(function(){
@@ -269,7 +281,7 @@ function loadOrders(){
       var badge = o.status === "done" ? '<span class="badge done">HO GAYA</span>' : (o.status === "manual" ? '<span class="badge">MANUAL PRINT</span>' : '<span class="badge">NAYA</span>');
       return '<div class="order' + (o.status === "new" ? " new" : "") + '">' +
         '<div class="top"><span>' + esc(o.id) + '</span>' + badge + '</div>' +
-        '<div class="meta">🕐 ' + fmtTime(o.ts) + '<br>📄 ' + esc(o.fileName) + '<br>🖨️ ' + (o.ptype === "color" ? "Color" : "Black & White") + ' · ' + (o.pside === "double" ? "Double side" : "Single side") +
+        '<div class="meta">🕐 ' + fmtTime(o.ts) + '<br>📄 ' + esc(o.fileName) + (o.fileCount > 1 ? ' <b>(' + o.fileCount + ' files)</b>' : '') + '<br>🖨️ ' + (o.ptype === "color" ? "Color" : "Black & White") + ' · ' + (o.pside === "double" ? "Double side" : "Single side") +
         ' · ' + o.pages + ' pages × ' + o.copies + ' copies' +
         (o.total ? '<br>💰 Total: <b>Rs ' + o.total + '</b>' : '<br>💰 Total: counter par') +
         (o.note ? '<br>📝 ' + esc(o.note) : '') + (o.agentNote ? '<br>⚠️ ' + esc(o.agentNote) : '') + '</div>' +
@@ -279,15 +291,26 @@ function loadOrders(){
     }).join("");
   }).catch(function(){ $("ordersList").innerHTML = '<p class="err">Orders load nahi hue — internet check karein.</p>'; });
 }
+function saveBlob(b64, fname){
+  var bin = atob(b64), arr = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  var url = URL.createObjectURL(new Blob([arr]));
+  var a = document.createElement("a"); a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+}
 function downloadFile(oid, fname){
   fetch(DB + "/files/" + oid + ".json").then(function(r){ return r.json(); }).then(function(d){
-    if (!d || !d.data) { alert("File nahi mili."); return; }
-    var bin = atob(d.data), arr = new Uint8Array(bin.length);
-    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-    var url = URL.createObjectURL(new Blob([arr]));
-    var a = document.createElement("a"); a.href = url; a.download = fname || (oid + ".pdf");
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+    if (!d) { alert("File nahi mili."); return; }
+    if (d.files && d.files.length) {
+      // Kai files hain — ek ek karke download karein
+      d.files.forEach(function(f, i){
+        setTimeout(function(){ saveBlob(f.data, f.name || (oid + "-" + (i+1))); }, i * 900);
+      });
+      return;
+    }
+    if (!d.data) { alert("File nahi mili."); return; }
+    saveBlob(d.data, fname || (oid + ".pdf"));
   }).catch(function(){ alert("Download fail — dobara koshish karein."); });
 }
 function markDone(oid){
