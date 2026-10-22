@@ -1251,7 +1251,7 @@ function scanChosenPhotos() {
 }
 function finishScan() {
   scanningNow = false;
-  $("scanModal").classList.add("hidden");
+  document.getElementById("scanModal").classList.add("hidden");
   var n = Object.keys(scannedIdx).length;
   renderFileInfo(n ? "🪪 " + n + " photo seedhi scan ho gayi hai — print bilkul saaf ayega." : "");
 }
@@ -1280,14 +1280,14 @@ function nextScanPhoto() {
   img.src = url;
 }
 function openScanEditor(note) {
-  $("scanImg").src = scanCur.url;
-  $("scanNote").textContent = note;
+  document.getElementById("scanImg").src = scanCur.url;
+  document.getElementById("scanNote").textContent = note;
   buildScanOverlay();
-  $("scanModal").classList.remove("hidden");
+  document.getElementById("scanModal").classList.remove("hidden");
   window.scrollTo(0, 0);
 }
 function buildScanOverlay() {
-  var ov = $("scanOverlay"), img = scanCur.img;
+  var ov = document.getElementById("scanOverlay"), img = scanCur.img;
   ov.setAttribute('viewBox', '0 0 ' + img.naturalWidth + ' ' + img.naturalHeight);
   ov.innerHTML = '';
   var unit = Math.max(img.naturalWidth, img.naturalHeight);
@@ -1327,7 +1327,7 @@ function drawScanOverlay() {
   }
 }
 function scanSvgPoint(evt) {
-  var ov = $("scanOverlay");
+  var ov = document.getElementById("scanOverlay");
   var pt = ov.createSVGPoint();
   pt.x = evt.clientX; pt.y = evt.clientY;
   var m = ov.getScreenCTM();
@@ -1335,21 +1335,21 @@ function scanSvgPoint(evt) {
   var p = pt.matrixTransform(m.inverse());
   return { x: p.x, y: p.y };
 }
-$("scanOverlay").addEventListener('pointerdown', function (e) {
+document.getElementById("scanOverlay").addEventListener('pointerdown', function (e) {
   var i = parseInt(e.target.getAttribute('data-i'), 10);
   if (isNaN(i)) return;
   scanDrag = i;
-  try { $("scanOverlay").setPointerCapture(e.pointerId); } catch (err) {}
+  try { document.getElementById("scanOverlay").setPointerCapture(e.pointerId); } catch (err) {}
   moveScanHandle(e);
   e.preventDefault();
 });
-$("scanOverlay").addEventListener('pointermove', function (e) {
+document.getElementById("scanOverlay").addEventListener('pointermove', function (e) {
   if (scanDrag < 0) return;
   moveScanHandle(e);
 });
 function endScanDrag() { scanDrag = -1; }
-$("scanOverlay").addEventListener('pointerup', endScanDrag);
-$("scanOverlay").addEventListener('pointercancel', endScanDrag);
+document.getElementById("scanOverlay").addEventListener('pointerup', endScanDrag);
+document.getElementById("scanOverlay").addEventListener('pointercancel', endScanDrag);
 function moveScanHandle(e) {
   if (!scanCur) return;
   var p = scanSvgPoint(e);
@@ -1359,25 +1359,25 @@ function moveScanHandle(e) {
   };
   drawScanOverlay();
 }
-$("scanAuto").addEventListener('click', function () {
+document.getElementById("scanAuto").addEventListener('click', function () {
   if (!scanCur) return;
   try {
     var det = detectDocumentCorners(scanCur.img, 'cnic');
-    if (det && det.corners) { scanCur.corners = det.corners; $("scanNote").textContent = "Auto dobara lag gaya hai — line kinare par check kar lein."; }
-    else { $("scanNote").textContent = "Auto ko card nahi mila — nuqtay haath se set karein."; }
-  } catch (e) { $("scanNote").textContent = "Auto nahi chala — nuqtay haath se set karein."; }
+    if (det && det.corners) { scanCur.corners = det.corners; document.getElementById("scanNote").textContent = "Auto dobara lag gaya hai — line kinare par check kar lein."; }
+    else { document.getElementById("scanNote").textContent = "Auto ko card nahi mila — nuqtay haath se set karein."; }
+  } catch (e) { document.getElementById("scanNote").textContent = "Auto nahi chala — nuqtay haath se set karein."; }
   drawScanOverlay();
 });
-$("scanFull").addEventListener('click', function () {
+document.getElementById("scanFull").addEventListener('click', function () {
   if (!scanCur) return;
   scanCur.corners = defaultScanCorners(scanCur.img.naturalWidth, scanCur.img.naturalHeight);
   drawScanOverlay();
 });
-$("scanSkip").addEventListener('click', function () {
+document.getElementById("scanSkip").addEventListener('click', function () {
   closeScanCur();
   nextScanPhoto();
 });
-$("scanDo").addEventListener('click', function () {
+document.getElementById("scanDo").addEventListener('click', function () {
   if (!scanCur) return;
   var idx = scanCur.idx, nm = scanCur.name, done = false;
   try {
